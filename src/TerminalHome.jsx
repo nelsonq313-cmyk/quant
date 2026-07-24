@@ -1,0 +1,93 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Activity, ArrowRight, BarChart3, Command, Database, Gauge, LineChart, MessageSquareText,
+  RefreshCw, Search, Server, ShieldAlert, Sigma, Sparkles, Waves,
+} from 'lucide-react';
+import InteractiveSurface3D from './InteractiveSurface3D.jsx';
+
+const SYMBOLS=['QQQ','SPY','AAPL','NVDA','MSFT'];
+const M=[-.20,-.15,-.10,-.05,0,.05,.10,.15,.20];
+const money=n=>Number.isFinite(Number(n))?`$${Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`:'—';
+const pct=n=>Number.isFinite(Number(n))?`${Number(n)>=0?'+':''}${Number(n).toFixed(2)}%`:'—';
+
+function nearest(bucket,target){
+  if(!bucket.length)return null;
+  return [...bucket].sort((a,b)=>Math.abs(a.strike-target)-Math.abs(b.strike-target))[0];
+}
+
+function surfaceFrom(payload){
+  const contracts=(payload?.contracts||[]).filter(c=>Number.isFinite(c.iv)&&c.iv>0&&Number.isFinite(c.strike));
+  const spot=payload?.underlyingPrice||1,dtes=[...new Set(contracts.map(c=>c.dte))].filter(Number.isFinite).sort((a,b)=>a-b).slice(0,6);
+  const rows=dtes.map(dte=>{const bucket=contracts.filter(c=>c.dte===dte);return M.map(m=>{const target=spot*(1+m),call=nearest(bucket.filter(c=>c.side==='call'),target),put=nearest(bucket.filter(c=>c.side==='put'),target),picked=call&&put?{...call,iv:(call.iv+put.iv)/2}:call||put;return{dte,moneyness:m,strike:picked?.strike??target,iv:picked?.iv||0}})});
+  return {rows,dtes,spot};
+}
+
+function Status({ok,children}){return <span className={`thStatus ${ok?'ok':'off'}`}><i/>{children}</span>}
+
+function Spark({values=[]}){
+  if(values.length<2)return <div className="thSparkEmpty">NO SERIES</div>;
+  const lo=Math.min(...values),hi=Math.max(...values),span=hi-lo||1,pts=values.map((v,i)=>`${(i/(values.length-1))*100},${34-((v-lo)/span)*30}`).join(' ');
+  return <svg viewBox="0 0 100 38" preserveAspectRatio="none" className="thSpark"><polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.2"/></svg>;
+}
+
+export default function TerminalHome({openResearch,openMarket,openApi,openCommand,askCopilot}){
+  const [quotes,setQuotes]=useState([]),[histories,setHistories]=useState({}),[surfacePayload,setSurfacePayload]=useState(null),[health,setHealth]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(false),[prompt,setPrompt]=useState('');
+
+  const load=async()=>{
+    setLoading(true);setError('');
+    try{
+      const [statusRes,quoteRes,optionRes,...candleResponses]=await Promise.all([
+        fetch('/api/status'),
+        fetch(`/api/market/quotes?symbols=${SYMBOLS.join(',')}`),
+        fetch('/api/options-chain?symbol=QQQ&dtes=7,30,60,90&strikeLimit=10'),
+        ...SYMBOLS.map(s=>fetch(`/api/market/candles?symbol=${s}&resolution=D&countback=40`)),
+      ]);
+      const status=await statusRes.json(),quote=await quoteRes.json();setHealth(status);
+      if(quoteRes.ok)setQuotes(quote.quotes||[]);
+      const next={};for(let i=0;i<candleResponses.length;i++){const r=candleResponses[i],d=await r.json();if(r.ok)next[SYMBOLS[i]]=d.candles||[]}setHistories(next);
+      const option=await optionRes.json();if(optionRes.ok&&option.contracts?.length)setSurfacePayload(option);
+      const failures=[!quoteRes.ok&&quote.error,...candleResponses.map((r,i)=>!r.ok&&`No ${SYMBOLS[i]} history`),!optionRes.ok&&option.error].filter(Boolean);
+      if(failures.length)setError(failures.join(' · '));
+    }catch(e){setError(e.message)}finally{setLoading(false)}
+  };
+  useEffect(()=>{load()},[]);
+
+  const surface=useMemo(()=>surfaceFrom(surfacePayload),[surfacePayload]);
+  const marketBreadth=useMemo(()=>{const usable=quotes.filter(q=>Number.isFinite(q.changePct));return{up:usable.filter(q=>q.changePct>=0).length,down:usable.filter(q=>q.changePct<0).length,total:usable.length}},[quotes]);
+  const submit=()=>{const text=prompt.trim();if(!text)return;askCopilot(text);setPrompt('')};
+
+  const functions=[
+    {code:'MC',title:'Risk Monte Carlo',desc:'Stopped paths, uncertainty, sensitivity and path audit',icon:Sigma,action:()=>openResearch('Risk & Monte Carlo')},
+    {code:'PROP',title:'Prop Simulator',desc:'Pass / fail / timeout engine with path-level rules',icon:Gauge,action:()=>openResearch('Prop Firm')},
+    {code:'VOL',title:'Volatility Lab',desc:'Interactive plasma IV surface, chain, skew and term structure',icon:Waves,action:()=>openResearch('Volatility')},
+    {code:'MKT',title:'Market Monitor',desc:'Quotes, history, realized vol, correlations and notes',icon:LineChart,action:openMarket},
+    {code:'DATA',title:'Data Terminal',desc:'Dataset provenance, curation and CSV preview workflow',icon:Database,action:()=>openResearch('Data')},
+    {code:'API',title:'System Health',desc:'Provider, model, cache and last request state',icon:Server,action:openApi},
+  ];
+
+  return <div className="terminalHome">
+    <header className="thHero">
+      <div><span>QNT / PERSONAL RESEARCH SYSTEM</span><h1>Terminal overview</h1><p>Command-driven market research, statistical simulation, volatility analytics and AI context in one dense workstation.</p></div>
+      <div className="thHeroStatus"><Status ok={health?.server?.ok}>SERVER</Status><Status ok={health?.marketData?.configured}>MARKET DATA</Status><Status ok={health?.openai?.configured}>OPENAI</Status><button onClick={load}><RefreshCw size={12}/>{loading?'SYNCING':'SYNC'}</button></div>
+    </header>
+
+    <div className="thCommandBar"><Command size={15}/><input value={prompt} onChange={e=>setPrompt(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submit()} placeholder="Ask QNT about the model, current screen, risk, volatility, or research design…"/><button onClick={submit}><Sparkles size={12}/> ASK QNT</button><button className="secondary" onClick={openCommand}><Search size={12}/> FUNCTIONS <kbd>⌘K</kbd></button></div>
+    {error&&<div className="thNotice"><ShieldAlert size={13}/>{error}. QNT leaves unavailable fields blank instead of substituting fake market data.</div>}
+
+    <section className="thTape">{SYMBOLS.map(s=>{const q=quotes.find(x=>x.symbol===s),vals=(histories[s]||[]).map(x=>x.close).filter(Number.isFinite);return <button key={s} onClick={()=>openMarket(s)}><div><b>{s}</b><span>{money(q?.last??vals.at(-1))}</span><em className={(q?.changePct??0)>=0?'up':'down'}>{pct(q?.changePct)}</em></div><Spark values={vals.slice(-25)}/></button>})}</section>
+
+    <div className="thGrid">
+      <section className="thPanel thFunctions"><div className="thPanelHead"><div><Command size={13}/><b>FUNCTION LAUNCHER</b></div><span>keyboard-first research workflow</span></div><div className="thFunctionGrid">{functions.map(({code,title,desc,icon:Icon,action})=><button key={code} onClick={action}><kbd>{code}</kbd><Icon size={15}/><div><b>{title}</b><span>{desc}</span></div><ArrowRight size={13}/></button>)}</div></section>
+
+      <section className="thPanel thSurface"><div className="thPanelHead"><div><Waves size={13}/><b>QQQ IMPLIED VOLATILITY SURFACE</b></div><button onClick={()=>openResearch('Volatility')}>OPEN VOL <ArrowRight size={11}/></button></div>{surface.rows.length?<InteractiveSurface3D surface={surface} moneynessLevels={M}/>:<div className="thUnavailable"><Waves size={22}/><b>OPTIONS SURFACE UNAVAILABLE</b><span>Connect/verify MarketData.app options entitlement to populate this panel.</span></div>}</section>
+
+      <section className="thPanel thBreadth"><div className="thPanelHead"><div><BarChart3 size={13}/><b>WATCHLIST BREADTH</b></div><span>provider quotes only</span></div><div className="thBreadthGauge"><div style={{'--up':`${marketBreadth.total?marketBreadth.up/marketBreadth.total*100:0}%`}}/><b>{marketBreadth.up} UP</b><b>{marketBreadth.down} DOWN</b></div><div className="thRows">{quotes.map(q=><div key={q.symbol}><span>{q.symbol}</span><b>{money(q.last)}</b><em className={(q.changePct??0)>=0?'up':'down'}>{pct(q.changePct)}</em><small>{q.volume?Number(q.volume).toLocaleString():'—'} vol</small></div>)}</div></section>
+
+      <section className="thPanel thResearch"><div className="thPanelHead"><div><Activity size={13}/><b>RESEARCH DESK</b></div><span>current QNT capabilities</span></div><div className="thResearchRows"><button onClick={()=>openResearch('Risk & Monte Carlo')}><i className="violet"/><div><b>Monte Carlo engine</b><span>Stopped at ruin · posterior probability uncertainty · sensitivity grid</span></div><strong>READY</strong></button><button onClick={()=>openResearch('Prop Firm')}><i className="green"/><div><b>Prop rule engine</b><span>Pass/fail/timeout · path inspection · configurable limits</span></div><strong>READY</strong></button><button onClick={()=>openResearch('Regimes')}><i className="amber"/><div><b>Regime analytics</b><span>Waiting for verified futures context join; no fake regime output</span></div><strong>DATA NEEDED</strong></button><button onClick={()=>openResearch('Verdict')}><i className="blue"/><div><b>Evidence review</b><span>Transparent model strengths, weaknesses and sample limitations</span></div><strong>READY</strong></button></div></section>
+
+      <section className="thPanel thSystem"><div className="thPanelHead"><div><Server size={13}/><b>SYSTEM / DATA PROVENANCE</b></div><button onClick={openApi}>DETAILS</button></div><div className="thSystemGrid"><div><span>SERVER TIME</span><b>{health?.server?.now?new Date(health.server.now).toLocaleTimeString():'—'}</b></div><div><span>CACHE</span><b>{health?.server?.cacheEntries??0} entries</b></div><div><span>MARKET MODE</span><b>{health?.marketData?.configured?'ENTITLEMENT-BASED':'OFFLINE'}</b></div><div><span>AI MODEL</span><b>{health?.openai?.model||'—'}</b></div><div><span>LAST MARKET SUCCESS</span><b>{health?.marketData?.lastSuccess?new Date(health.marketData.lastSuccess).toLocaleTimeString():'—'}</b></div><div><span>LAST AI SUCCESS</span><b>{health?.openai?.lastSuccess?new Date(health.openai.lastSuccess).toLocaleTimeString():'—'}</b></div></div></section>
+
+      <section className="thPanel thCoverage"><div className="thPanelHead"><div><MessageSquareText size={13}/><b>COVERAGE MAP</b></div><span>honest availability</span></div><div className="thCoverageGrid"><div className="ready"><b>STOCK / ETF QUOTES</b><span>MarketData.app provider route</span></div><div className="ready"><b>OPTIONS / GREEKS</b><span>By account entitlement and returned fields</span></div><div><b>NQ / ES FUTURES</b><span>No verified direct futures feed connected</span></div><div><b>NEWS / CALENDAR</b><span>No verified provider; QNT will not fabricate events</span></div></div></section>
+    </div>
+  </div>;
+}
