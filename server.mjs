@@ -170,6 +170,8 @@ app.post('/api/copilot', async (req, res) => {
     },
   ];
 
+  const model = process.env.OPENAI_MODEL || 'gpt-5.6-luna';
+
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
@@ -178,7 +180,8 @@ app.post('/api/copilot', async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-5',
+        model,
+        reasoning: { effort: 'low' },
         instructions: [
           'You are QNT Copilot, a quantitative research coding assistant inside a private trading research IDE.',
           'Help with research design, statistics, backtesting, code, data cleaning, Monte Carlo, volatility, and market-regime analysis.',
@@ -188,7 +191,7 @@ app.post('/api/copilot', async (req, res) => {
           'Do not use qnt_code tags unless a full-file replacement is actually useful.',
         ].join(' '),
         input,
-        max_output_tokens: 1800,
+        max_output_tokens: 2200,
       }),
     });
 
@@ -199,7 +202,7 @@ app.post('/api/copilot', async (req, res) => {
 
     const text = outputText(body);
     if (!text) return res.status(502).json({ error: 'OpenAI returned no text output' });
-    return res.json({ text, model: process.env.OPENAI_MODEL || 'gpt-5' });
+    return res.json({ text, model });
   } catch (error) {
     return res.status(503).json({ error: error instanceof Error ? error.message : 'Unable to reach OpenAI' });
   }
