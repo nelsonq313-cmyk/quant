@@ -15,6 +15,7 @@ import './terminal-home.css';
 import './bloomberg-desk.css';
 import './analytics-terminal.css';
 import './terminal-workbench.css';
+import './terminal-workbench-extra.css';
 import './terminal-cohesion.css';
 import './product-shell.css';
 import './terminal-shell.css';
