@@ -177,6 +177,16 @@ if (process.env.NODE_ENV === 'production') {
   app.use(vite.middlewares);
 }
 
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Retrying in 2 seconds…`);
+    setTimeout(() => server.listen(port, '0.0.0.0'), 2000);
+  } else {
+    console.error('Server error:', err);
+    process.exit(1);
+  }
+});
+
 server.listen(port, '0.0.0.0', () => {
   console.log(`QNT research terminal running on port ${port}`);
 });
