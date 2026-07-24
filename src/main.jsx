@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.jsx';
+import ProductShell from './ProductShell.jsx';
 import MonteCarloResearch from './MonteCarloResearch.jsx';
 import './styles.css';
 import './volatility.css';
 import './montecarlo.css';
+import './product-shell.css';
 
 function Root(){
   const [mcMode,setMcMode]=useState(null);
@@ -23,7 +24,7 @@ function Root(){
   },[]);
 
   return <>
-    <App />
+    <ProductShell />
     {mcMode&&<div className="qmcOverlay"><MonteCarloResearch propMode={mcMode==='prop'}/></div>}
   </>;
 }
