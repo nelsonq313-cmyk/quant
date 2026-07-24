@@ -34,7 +34,9 @@ import {
   Sigma,
   TerminalSquare,
   Upload,
+  Waves,
 } from 'lucide-react';
+import VolatilityLab from './VolatilityLab';
 
 const sampleR = [
   2.4,-1,4.8,-1,1.9,6.2,-1,-1,3.1,2.8,-1,7.4,1.3,-1,5.7,-1,2.1,3.9,-1,8.2,
@@ -145,7 +147,7 @@ function MonteCarloView({returns,propMode=false}){
   const set=(k,v)=>setCfg(c=>({...c,[k]:Number(v)}));
   const dist=useMemo(()=>{
     const min=Math.min(...result.terminals), max=Math.max(...result.terminals), bins=18, w=(max-min||1)/bins;
-    return Array.from({length:bins},(_,i)=>({x:min+i*w,count:0})).map((b,i,arr)=>{b.count=result.terminals.filter(v=>Math.min(bins-1,Math.floor((v-min)/w))===i).length;return b});
+    return Array.from({length:bins},(_,i)=>({x:min+i*w,count:0})).map((b,i)=>{b.count=result.terminals.filter(v=>Math.min(bins-1,Math.floor((v-min)/w))===i).length;return b});
   },[result]);
   const scatter=useMemo(()=>result.terminals.slice(0,1200).map((v,i)=>({dd:result.drawdowns[i]||0,ret:(v-cfg.startingBalance)/cfg.startingBalance*100,status:v>=cfg.target?'pass':'other'})),[result,cfg]);
   const pathData=useMemo(()=>{
@@ -219,9 +221,9 @@ function DataView({returns,onImport}){
 
 export default function App(){
   const [tab,setTab]=useState('Terminal'); const [returns,setReturns]=useState(sampleR);
-  const tabs=[['Terminal',TerminalSquare],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',Activity],['Data',Database]];
+  const tabs=[['Terminal',TerminalSquare],['Volatility',Waves],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',Activity],['Data',Database]];
   return <div className="appShell">
-    <header className="topNav"><div className="brand"><div className="mark">Q</div><span>QNT</span><small>RESEARCH TERMINAL</small></div><nav>{tabs.map(([t,I])=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}><I size={14}/>{t}</button>)}</nav><div className="rightNav"><Search size={16}/><span className="statusDot"/>LIVE</div></header>
-    <main>{tab==='Terminal'&&<TerminalView returns={returns}/>} {tab==='Prop Firm'&&<MonteCarloView returns={returns} propMode/>} {tab==='Verdict'&&<VerdictView returns={returns}/>} {tab==='Regimes'&&<RegimeView returns={returns}/>} {tab==='Risk & Monte Carlo'&&<MonteCarloView returns={returns}/>} {tab==='Data'&&<DataView returns={returns} onImport={setReturns}/>}</main>
+    <header className="topNav"><div className="brand"><div className="mark">Q</div><span>QNT</span><small>RESEARCH TERMINAL</small></div><nav>{tabs.map(([t,I])=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}><I size={14}/>{t}</button>)}</nav><div className="rightNav"><Search size={16}/><span className="statusDot"/>RESEARCH</div></header>
+    <main>{tab==='Terminal'&&<TerminalView returns={returns}/>} {tab==='Volatility'&&<VolatilityLab/>} {tab==='Prop Firm'&&<MonteCarloView returns={returns} propMode/>} {tab==='Verdict'&&<VerdictView returns={returns}/>} {tab==='Regimes'&&<RegimeView returns={returns}/>} {tab==='Risk & Monte Carlo'&&<MonteCarloView returns={returns}/>} {tab==='Data'&&<DataView returns={returns} onImport={setReturns}/>}</main>
   </div>
 }
