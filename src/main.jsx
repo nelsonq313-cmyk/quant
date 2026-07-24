@@ -12,7 +12,7 @@ function Root(){
 
   useEffect(()=>{
     const onClick=(event)=>{
-      const productButton=event.target.closest?.('.qpsTopbar nav button');
+      const productButton=event.target.closest?.('.qpsRailNav button, .qpsRailBottom button');
       if(productButton){
         setMcMode(null);
         return;
