@@ -12,9 +12,14 @@ function Root(){
 
   useEffect(()=>{
     const onClick=(event)=>{
-      const button=event.target.closest?.('.topNav nav button');
-      if(!button)return;
-      const label=button.textContent.trim();
+      const productButton=event.target.closest?.('.qpsTopbar nav button');
+      if(productButton){
+        setMcMode(null);
+        return;
+      }
+      const researchButton=event.target.closest?.('.topNav nav button');
+      if(!researchButton)return;
+      const label=researchButton.textContent.trim();
       if(label==='Risk & Monte Carlo') setMcMode('risk');
       else if(label==='Prop Firm') setMcMode('prop');
       else setMcMode(null);
