@@ -1,235 +1,147 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Activity,
+  BarChart3,
+  BookOpen,
+  Braces,
+  ChevronRight,
+  Database,
+  FileCode2,
+  Folder,
+  MessageSquareText,
+  Play,
+  Plus,
+  Search,
+  Settings2,
+  Sigma,
+  Upload,
+  Waves,
+} from 'lucide-react';
+import {
   Area,
   AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  Pie,
-  PieChart,
   ResponsiveContainer,
-  Scatter,
-  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
-  ZAxis,
 } from 'recharts';
-import {
-  Activity,
-  BarChart3,
-  Braces,
-  ChevronDown,
-  Database,
-  FileCode2,
-  Folder,
-  Play,
-  Plus,
-  RefreshCw,
-  Search,
-  Settings2,
-  Sigma,
-  TerminalSquare,
-  Upload,
-  Waves,
-} from 'lucide-react';
 import VolatilityLab from './VolatilityLab';
-import { personalModel, drawPersonalR } from './personalDataset';
+import { personalModel } from './personalDataset';
 
-const sampleR = personalModel.evalR;
+const mean=(a)=>a.reduce((s,v)=>s+v,0)/(a.length||1);
+const sd=(a)=>{const m=mean(a);return Math.sqrt(mean(a.map(v=>(v-m)**2)))};
+const fmtPct=(n)=>`${Number(n).toFixed(1)}%`;
+const fmtMoney=(n)=>`${n<0?'-':''}$${Math.abs(n).toLocaleString(undefined,{maximumFractionDigits:0})}`;
 
-const fmtMoney = (n) => `${n < 0 ? '-' : ''}$${Math.abs(n).toLocaleString(undefined,{maximumFractionDigits:0})}`;
-const fmtPct = (n) => `${n.toFixed(1)}%`;
-const mean = (a) => a.reduce((s,v)=>s+v,0)/(a.length||1);
-const median = (a) => {
-  if (!a.length) return 0;
-  const s=[...a].sort((x,y)=>x-y); const m=Math.floor(s.length/2);
-  return s.length%2?s[m]:(s[m-1]+s[m])/2;
-};
-const stdev = (a) => {
-  const m=mean(a); return Math.sqrt(mean(a.map(v=>(v-m)**2)));
-};
-
-function runMonteCarlo({ returns, simulations, steps, startingBalance, riskPerTrade, target, floor, personal=false }) {
-  const paths=[]; const terminals=[]; const drawdowns=[]; const streaks=[]; const recovery=[];
-  let passed=0, failed=0, timeout=0;
-  for(let s=0;s<simulations;s++){
-    let bal=startingBalance, peak=bal, maxDd=0, lossStreak=0, maxLossStreak=0, lastPeakStep=0, worstRecovery=0;
-    let status='timeout'; const path=[{step:0,balance:bal}];
-    for(let i=1;i<=steps;i++){
-      const r=personal ? drawPersonalR() : returns[Math.floor(Math.random()*returns.length)];
-      bal += r*riskPerTrade;
-      if(r<0){ lossStreak++; maxLossStreak=Math.max(maxLossStreak,lossStreak); } else lossStreak=0;
-      if(bal>peak){ worstRecovery=Math.max(worstRecovery,i-lastPeakStep); peak=bal; lastPeakStep=i; }
-      maxDd=Math.max(maxDd,peak-bal);
-      if(s<180 && (i===1 || i%2===0 || i===steps)) path.push({step:i,balance:bal});
-      if(bal>=target){ status='pass'; break; }
-      if(bal<=floor){ status='fail'; break; }
-    }
-    if(status==='pass') passed++; else if(status==='fail') failed++; else timeout++;
-    terminals.push(bal); drawdowns.push(maxDd); streaks.push(maxLossStreak); recovery.push(worstRecovery);
-    if(s<180) paths.push(path);
-  }
-  return {
-    passed,failed,timeout,paths,terminals,drawdowns,streaks,recovery,
-    passPct:passed/simulations*100, failPct:failed/simulations*100, timeoutPct:timeout/simulations*100,
-    medTerminal:median(terminals), medDd:median(drawdowns), p95Dd:[...drawdowns].sort((a,b)=>a-b)[Math.floor(drawdowns.length*.95)]||0,
-    medStreak:median(streaks), p95Streak:[...streaks].sort((a,b)=>a-b)[Math.floor(streaks.length*.95)]||0,
-    medRecovery:median(recovery),
-  };
+function Stat({label,value,sub,tone=''}){
+  return <div className="qpStat"><span>{label}</span><b className={tone}>{value}</b>{sub&&<small>{sub}</small>}</div>;
 }
 
-function metricSet(returns){
-  const wins=returns.filter(v=>v>0), losses=returns.filter(v=>v<0);
-  const wr=wins.length/returns.length*100;
-  const avgWin=mean(wins), avgLoss=Math.abs(mean(losses));
-  const ev=mean(returns);
-  const pf=Math.abs(wins.reduce((s,v)=>s+v,0)/(losses.reduce((s,v)=>s+v,0)||-1));
-  const vol=stdev(returns)*Math.sqrt(252);
-  const sharpe=stdev(returns)?mean(returns)/stdev(returns)*Math.sqrt(252):0;
-  return {wr,avgWin,avgLoss,ev,pf,vol,sharpe};
-}
-
-function SmallMetric({label,value,tone='neutral',sub}){
-  return <div className="smallMetric"><div className="label">{label}</div><div className={`metricValue ${tone}`}>{value}</div>{sub&&<div className="sub">{sub}</div>}</div>
-}
-
-function TerminalView({returns,sourceLabel}){
-  const m=metricSet(returns);
+function Workspace(){
+  const [file,setFile]=useState('nq_edge_study.py');
+  const [prompt,setPrompt]=useState('');
   const equity=useMemo(()=>{
-    let x=100000; return returns.map((r,i)=>{x+=r*500;return {i:i+1,equity:x,ret:r}})
-  },[returns]);
-  return <div className="terminalGrid">
-    <aside className="workspacePane panel">
-      <div className="paneTitle">WORKSPACE <Plus size={14}/></div>
-      <div className="treeItem active"><FileCode2 size={15}/> nq_edge_study.qnt</div>
-      <div className="treeItem"><Folder size={15}/> Research</div>
-      <div className="treeChild"><FileCode2 size={14}/> monte_carlo.qnt</div>
-      <div className="treeChild"><FileCode2 size={14}/> regime_map.qnt</div>
-      <div className="treeChild"><FileCode2 size={14}/> volatility_lab.qnt</div>
-      <div className="treeItem"><Database size={15}/> Trade data</div>
-      <div className="terminalFacts">
-        <span>Rows</span><b>{returns.length}</b><span>Source</span><b>{sourceLabel}</b>
-      </div>
+    let x=100000;
+    return personalModel.evalR.map((r,i)=>{x+=r*500;return {i:i+1,equity:x}});
+  },[]);
+  const files=[
+    ['nq_edge_study.py','py'],
+    ['monte_carlo.py','py'],
+    ['regime_map.ipynb','nb'],
+    ['trade_log.csv','csv'],
+    ['notes.md','md'],
+  ];
+  const codeByFile={
+    'nq_edge_study.py':`# NQ personal edge study\nfrom qnt import trades, research\n\ndata = trades.load("personal_model")\nreport = research.validate(\n    data,\n    metrics=["expectancy", "drawdown", "payoff"],\n    split_by=["session", "trend", "volatility"],\n)\n\nreport.render()`,
+    'monte_carlo.py':`from qnt import montecarlo\n\nmodel = montecarlo.personal(\n    win_probability=0.3929,\n    loss_probability=0.5357,\n    breakeven_probability=0.0714,\n)\n\nmodel.run(paths=4000, horizon=109)`,
+    'regime_map.ipynb':`# Regime research\n# Join each trade to NQ market context, then compare:\n# trend / consolidation\n# low / normal / high volume\n# low / high realized volatility\n# session and direction`,
+    'trade_log.csv':`source,status,count\neval,serious ideas,28\npractice,vetted winners,28\neval losses,loss library,15`,
+    'notes.md':`# Research notes\n\n- 7/22 tilt day excluded from baseline\n- practice winners do not increase win probability\n- regime confidence should be labeled when sample size is small`,
+  };
+  const m=personalModel.evalR;
+  const positive=m.filter(x=>x>0), negative=m.filter(x=>x<0);
+  const pf=Math.abs(positive.reduce((s,v)=>s+v,0)/(negative.reduce((s,v)=>s+v,0)||-1));
+  const ev=mean(m);
+  const sharpe=sd(m)?mean(m)/sd(m)*Math.sqrt(252):0;
+
+  const send=()=>{ if(prompt.trim()) setPrompt(''); };
+
+  return <div className="qpWorkspace">
+    <aside className="qpFiles">
+      <div className="qpPaneHead"><span>EXPLORER</span><Plus size={13}/></div>
+      <div className="qpProjectName"><Folder size={13}/> NQ edge research</div>
+      <div className="qpFileList">{files.map(([name,type])=><button key={name} className={file===name?'active':''} onClick={()=>setFile(name)}><FileCode2 size={12}/><span>{name}</span><small>{type}</small></button>)}</div>
+      <div className="qpDataBlock"><div><Database size={12}/> DATA SOURCES</div><p><b>Personal trade model</b><span>connected</span></p><p><b>Market Data</b><span>delayed</span></p><p><b>OpenAI</b><span>pending route</span></p></div>
     </aside>
-    <section className="editorPane panel">
-      <div className="editorTop"><span><Braces size={14}/> nq_edge_study.qnt</span><button><Play size={13}/> Run</button></div>
-      <pre className="code"><span className="muted"># Research question</span>{'\n'}<span className="str">"Does my NQ setup maintain positive expectancy after volatility adjustment?"</span>{'\n\n'}dataset = <span className="fn">trades.load</span>(<span className="str">"personal_eval"</span>){'\n'}study = <span className="fn">analyze</span>(dataset, metrics=[{'\n'}  <span className="str">"expectancy"</span>, <span className="str">"realized_vol"</span>, <span className="str">"sharpe"</span>,{'\n'}  <span className="str">"profit_factor"</span>, <span className="str">"drawdown"</span>{'\n'}]){'\n\n'}<span className="fn">render</span>(study)</pre>
-      <div className="editorFooter"><span>Ln 12, Col 1</span><span>QNT Runtime • Ready</span></div>
+
+    <section className="qpEditor">
+      <div className="qpEditorTabs"><div className="active"><FileCode2 size={12}/>{file}<span>×</span></div><button><Plus size={12}/></button></div>
+      <div className="qpEditorBar"><span>personal / NQ edge research</span><button><Play size={12}/> Run</button></div>
+      <pre className="qpCode">{codeByFile[file]}</pre>
+      <div className="qpNotebookOutput">
+        <div className="qpOutputHead"><span>OUTPUT</span><b>research.validate()</b><small>completed</small></div>
+        <div className="qpOutputStats">
+          <Stat label="EVAL WIN RATE" value={fmtPct(personalModel.winProbability*100)} tone="good"/>
+          <Stat label="EXPECTANCY*" value={`${ev.toFixed(2)}R`} sub="raw export scale"/>
+          <Stat label="PROFIT FACTOR*" value={pf.toFixed(2)} sub="raw export scale"/>
+          <Stat label="SHARPE*" value={sharpe.toFixed(2)} sub="raw export scale"/>
+        </div>
+        <div className="qpOutputChart"><ResponsiveContainer width="100%" height={190}><AreaChart data={equity}><defs><linearGradient id="qpeq" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#7a8190" stopOpacity=".24"/><stop offset="100%" stopColor="#7a8190" stopOpacity="0"/></linearGradient></defs><CartesianGrid stroke="#171a1e" vertical={false}/><XAxis dataKey="i" stroke="#4d5259" tick={{fontSize:8}}/><YAxis stroke="#4d5259" tick={{fontSize:8}} tickFormatter={v=>`$${Math.round(v/1000)}k`}/><Tooltip contentStyle={{background:'#080a0c',border:'1px solid #2b3036',fontSize:9}}/><Area type="monotone" dataKey="equity" stroke="#b6bbc3" fill="url(#qpeq)" strokeWidth={1}/></AreaChart></ResponsiveContainer></div>
+      </div>
+      <div className="qpStatus"><span>QNT runtime</span><span>personal model loaded</span><span>Ln 11, Col 1</span></div>
     </section>
-    <section className="resultsPane panel">
-      <div className="resultsHeader"><div><div className="eyebrow">RESEARCH OUTPUT</div><h2>NQ edge quality</h2></div><Activity size={18}/></div>
-      <p className="finding">The active dataset is your serious eval sample with the tilt day excluded. Monte Carlo uses the eval win/loss probabilities, eval losses only, and the vetted practice winners to expand the winner distribution.</p>
-      <div className="metrics4">
-        <SmallMetric label="EXPECTANCY" value={`${m.ev.toFixed(2)}R`} tone="good"/>
-        <SmallMetric label="REALIZED VOL" value={fmtPct(m.vol)} tone="violet"/>
-        <SmallMetric label="SHARPE" value={m.sharpe.toFixed(2)} tone="good"/>
-        <SmallMetric label="PROFIT FACTOR" value={m.pf.toFixed(2)} tone="warn"/>
+
+    <aside className="qpCopilot">
+      <div className="qpCopilotHead"><div><MessageSquareText size={14}/><b>QNT Copilot</b></div><button><Plus size={12}/> New chat</button></div>
+      <div className="qpChat">
+        <div className="qpUserBubble">Analyze my NQ dataset and tell me where the edge is strongest.</div>
+        <div className="qpAgentBlock"><div><span className="qpAgentDot"/><b>QNT</b><small>research agent</small></div><p>I’ll keep win probability anchored to the serious eval sample, use eval losses for the loss distribution, and treat the vetted practice trades only as extra winner-shape evidence.</p></div>
+        <div className="qpToolRow"><Search size={12}/><span>Inspecting trade dataset</span><b>28 eval ideas</b></div>
+        <div className="qpToolRow"><Braces size={12}/><span>Running validation study</span><b>done</b></div>
+        <div className="qpAgentBlock"><div><span className="qpAgentDot"/><b>QNT</b></div><p>Your next useful layer is regime tagging. The overall sample is usable, but trend × volume × volatility subgroups need confidence labels because some buckets will be small.</p></div>
       </div>
-      <div className="chartCard"><div className="chartTitle">Equity / research curve</div><ResponsiveContainer width="100%" height={235}><AreaChart data={equity}><defs><linearGradient id="eq" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#23d6a2" stopOpacity=".35"/><stop offset="100%" stopColor="#23d6a2" stopOpacity="0"/></linearGradient></defs><CartesianGrid stroke="#1b1d20" vertical={false}/><XAxis dataKey="i" stroke="#5f6368" tick={{fontSize:10}}/><YAxis stroke="#5f6368" tick={{fontSize:10}} domain={['dataMin-1000','dataMax+1000']}/><Tooltip contentStyle={{background:'#090a0b',border:'1px solid #2b2e33'}}/><Area type="monotone" dataKey="equity" stroke="#23d6a2" fill="url(#eq)" strokeWidth={1.4}/></AreaChart></ResponsiveContainer></div>
-      <div className="askBox">Ask QNT to edit, run, compare regimes, or explain… <span>↗</span></div>
-    </section>
-  </div>
+      <div className="qpComposer"><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="Ask QNT to build, test, edit, or explain…"/><div><span>personal model · NQ</span><button onClick={send}>Send ↗</button></div></div>
+    </aside>
+  </div>;
 }
 
-function MonteCarloView({returns,propMode=false,usePersonalModel=false}){
-  const [cfg,setCfg]=useState({simulations:4000,steps:109,startingBalance:100000,riskPerTrade:500,target:116165,floor:95000});
-  const [seed,setSeed]=useState(0);
-  const result=useMemo(()=>runMonteCarlo({...cfg,returns,personal:usePersonalModel}),[cfg,returns,seed,usePersonalModel]);
-  const set=(k,v)=>setCfg(c=>({...c,[k]:Number(v)}));
-  const dist=useMemo(()=>{
-    const min=Math.min(...result.terminals), max=Math.max(...result.terminals), bins=18, w=(max-min||1)/bins;
-    return Array.from({length:bins},(_,i)=>({x:min+i*w,count:0})).map((b,i)=>{b.count=result.terminals.filter(v=>Math.min(bins-1,Math.floor((v-min)/w))===i).length;return b});
-  },[result]);
-  const scatter=useMemo(()=>result.terminals.slice(0,1200).map((v,i)=>({dd:result.drawdowns[i]||0,ret:(v-cfg.startingBalance)/cfg.startingBalance*100,status:v>=cfg.target?'pass':'other'})),[result,cfg]);
-  const pathData=useMemo(()=>{
-    const rows={}; result.paths.slice(0,70).forEach((p,pi)=>p.forEach(pt=>{rows[pt.step]??={step:pt.step};rows[pt.step][`p${pi}`]=pt.balance})); return Object.values(rows).sort((a,b)=>a.step-b.step)
-  },[result]);
-  const pie=[{name:'Pass',value:result.passPct},{name:'Fail',value:result.failPct},{name:'Timeout',value:result.timeoutPct}];
-  return <div className="mcPage">
-    <div className="mcTopbar">
-      <div><div className="eyebrow">{propMode?'PROP FIRM':'RISK & MONTE CARLO'}</div><h1>{propMode?'Challenge simulator':'Monte Carlo Lab'}</h1></div>
-      <div className="runGroup"><button className="ghost"><Settings2 size={14}/> Simulation settings <ChevronDown size={13}/></button><button className="run" onClick={()=>setSeed(x=>x+1)}><Play size={13}/> Run</button></div>
-    </div>
-    {usePersonalModel&&<div className="panel dataHelp"><b>PERSONAL MODEL ACTIVE</b><p className="mutedText">Eval probabilities: {fmtPct(personalModel.winProbability*100)} win • {fmtPct(personalModel.lossProbability*100)} loss • {fmtPct(personalModel.breakevenProbability*100)} breakeven. Winner library: {personalModel.evalWins} eval + {personalModel.practiceWinners} vetted practice. Loss library: {personalModel.evalLosses} eval only. Tilt day excluded.</p></div>}
-    <div className="configRow">
-      <label>Simulations<input value={cfg.simulations} onChange={e=>set('simulations',e.target.value)}/></label>
-      <label>Steps<input value={cfg.steps} onChange={e=>set('steps',e.target.value)}/></label>
-      <label>Start<input value={cfg.startingBalance} onChange={e=>set('startingBalance',e.target.value)}/></label>
-      <label>Risk / trade<input value={cfg.riskPerTrade} onChange={e=>set('riskPerTrade',e.target.value)}/></label>
-      <label>Target<input value={cfg.target} onChange={e=>set('target',e.target.value)}/></label>
-      <label>Ruin floor<input value={cfg.floor} onChange={e=>set('floor',e.target.value)}/></label>
-    </div>
-    <div className="heroMetrics">
-      <SmallMetric label="RISK OF RUIN" value={fmtPct(result.failPct)} tone="bad" sub={`Floor ${fmtMoney(cfg.floor)}`}/>
-      <SmallMetric label="P(PROFIT TARGET)" value={fmtPct(result.passPct)} tone="good" sub="Target hit first"/>
-      <SmallMetric label="MEDIAN TERMINAL" value={fmtMoney(result.medTerminal)} tone="good"/>
-      <SmallMetric label="MEDIAN MAX DD" value={fmtMoney(result.medDd)} tone="warn" sub={`95th ${fmtMoney(result.p95Dd)}`}/>
-      <SmallMetric label="95% LOSING STREAK" value={`${Math.round(result.p95Streak)} trades`} tone="bad"/>
-    </div>
-    <div className="mcMainGrid">
-      <div className="panel chartPanel wide">
-        <div className="chartTitle">Monte Carlo Equity Paths <span>{cfg.simulations.toLocaleString()} simulations • {cfg.steps}-step horizon</span></div>
-        <ResponsiveContainer width="100%" height={390}><LineChart data={pathData}><CartesianGrid stroke="#17191c" vertical={false}/><XAxis dataKey="step" stroke="#555a61" tick={{fontSize:10}}/><YAxis stroke="#555a61" tick={{fontSize:10}} domain={['dataMin-1000','dataMax+1000']}/><Tooltip contentStyle={{background:'#090a0b',border:'1px solid #2b2e33'}}/>{Array.from({length:70},(_,i)=><Line key={i} type="monotone" dataKey={`p${i}`} stroke={i%4===0?'#24c997':i%4===1?'#4d78ff':i%4===2?'#c95868':'#c59d37'} strokeWidth={.55} dot={false} opacity={.28} isAnimationActive={false}/>)}</LineChart></ResponsiveContainer>
-      </div>
-      <div className="panel passPanel">
-        <div className="chartTitle">Race to boundary</div>
-        <ResponsiveContainer width="100%" height={210}><PieChart><Pie data={pie} dataKey="value" innerRadius={58} outerRadius={78} paddingAngle={1}>{pie.map((_,i)=><Cell key={i} fill={['#2cc79a','#e15d64','#c49a25'][i]}/>)}</Pie><Tooltip contentStyle={{background:'#090a0b',border:'1px solid #2b2e33'}}/></PieChart></ResponsiveContainer>
-        <div className="legend"><span className="g">Pass {fmtPct(result.passPct)}</span><span className="r">Fail {fmtPct(result.failPct)}</span><span className="y">Timeout {fmtPct(result.timeoutPct)}</span></div>
-      </div>
-    </div>
-    <div className="distributionGrid">
-      <div className="panel chartPanel"><div className="chartTitle">Terminal equity</div><ResponsiveContainer width="100%" height={220}><BarChart data={dist}><CartesianGrid stroke="#17191c" vertical={false}/><XAxis dataKey="x" stroke="#555a61" tickFormatter={v=>`$${Math.round(v/1000)}k`} tick={{fontSize:9}}/><YAxis hide/><Tooltip contentStyle={{background:'#090a0b',border:'1px solid #2b2e33'}}/><Bar dataKey="count" fill="#5867db"/></BarChart></ResponsiveContainer></div>
-      <div className="panel chartPanel"><div className="chartTitle">Return vs drawdown map</div><ResponsiveContainer width="100%" height={220}><ScatterChart><CartesianGrid stroke="#17191c"/><XAxis type="number" dataKey="dd" name="Drawdown" stroke="#555a61" tickFormatter={v=>`$${Math.round(v/1000)}k`} tick={{fontSize:9}}/><YAxis type="number" dataKey="ret" name="Return" stroke="#555a61" tickFormatter={v=>`${v.toFixed(0)}%`} tick={{fontSize:9}}/><ZAxis range={[18,18]}/><Tooltip cursor={{strokeDasharray:'3 3'}} contentStyle={{background:'#090a0b',border:'1px solid #2b2e33'}}/><Scatter data={scatter} fill="#28bf92" fillOpacity={.45}/></ScatterChart></ResponsiveContainer></div>
-    </div>
-  </div>
+function Verdict(){
+  const scores=[['Edge',78],['Robustness',64],['Risk',71],['Sample',56]];
+  return <div className="qpToolPage"><div className="qpToolTitle"><span>STRATEGY VALIDATION</span><h1>Verdict</h1><p>One-page gut check on edge quality, robustness, risk, and sample confidence.</p></div><div className="qpVerdictHero"><div className="qpGrade">B</div><div><b>Promising, not proven</b><p>Payoff asymmetry is carrying the edge. Sample size is enough for overall research, but not every regime bucket yet.</p></div></div><div className="qpScoreGrid">{scores.map(([n,v])=><div key={n}><span>{n}<b>{v}</b></span><div><i style={{width:`${v}%`}}/></div></div>)}</div><div className="qpFindings"><article><span className="good">●</span><div><b>Winner asymmetry is meaningful</b><p>Large winners matter more than raw win rate.</p></div></article><article><span className="warn">●</span><div><b>Regime sample confidence is still thin</b><p>Use confidence labels instead of treating small buckets as proven.</p></div></article><article><span className="bad">●</span><div><b>Raw R export is not true stop-based R</b><p>Keep conservative payoff calibration until planned stop distance is available.</p></div></article></div></div>;
 }
 
-function VerdictView({returns}){
-  const m=metricSet(returns); const edge=Math.max(0,Math.min(100,Math.round(50+m.ev*9))); const robustness=Math.round(Math.max(35,90-m.vol)); const risk=Math.round(Math.max(30,100-Math.abs(Math.min(...returns))*8)); const sample=Math.min(100,Math.round(returns.length/1.2));
-  const grade=edge>80?'A':edge>68?'B':edge>55?'C':'D';
-  return <div className="verdictPage">
-    <div className="gradeRow"><div className={`grade grade${grade}`}>{grade}</div><div><div className="eyebrow">VERDICT</div><h2>Strategy grade {grade}</h2><p>{grade==='A'||grade==='B'?'Positive edge detected, but risk concentration and sample confidence still matter.':'Edge is weak or not statistically convincing yet.'}</p></div></div>
-    <div className="scoreGrid">{[['Edge',edge],['Robustness',robustness],['Risk',risk],['Sample adequacy',sample]].map(([k,v])=><div className="score" key={k}><div><span>{k}</span><b>{v}</b></div><div className="barTrack"><div style={{width:`${v}%`}}/></div></div>)}</div>
-    <div className="keyMetrics"><SmallMetric label="WIN RATE" value={fmtPct(m.wr)} tone="bad"/><SmallMetric label="EXPECTANCY" value={`${m.ev.toFixed(2)}R`} tone="good"/><SmallMetric label="PROFIT FACTOR" value={m.pf.toFixed(2)} tone="warn"/><SmallMetric label="REALIZED VOL" value={fmtPct(m.vol)} tone="violet"/><SmallMetric label="SHARPE" value={m.sharpe.toFixed(2)}/></div>
-    <div className="findings panel"><h3>Findings (3)</h3><div className="findingRow red"><b>Edge depends on payoff asymmetry</b><p>Your win rate alone does not explain performance. Larger winners are carrying most of the expectancy.</p></div><div className="findingRow yellow"><b>Volatility concentration is material</b><p>Return dispersion is elevated. Keep risk fixed until the sample proves the edge survives high-volatility stretches.</p></div><div className="findingRow green"><b>Sample is usable but still growing</b><p>{returns.length} observations are enough for directional research, not enough to treat every sub-pattern as proven.</p></div></div>
-  </div>
+function Regimes(){
+  const rows=[['Trend + normal vol',1.42,9],['Trend + high vol',1.08,6],['Consolidation + normal vol',0.31,7],['Consolidation + high vol',-0.18,6]];
+  return <div className="qpToolPage"><div className="qpToolTitle"><span>MARKET REGIMES</span><h1>Regime map</h1><p>Segment the strategy by trend state and volatility, then add volume and session once futures market context is joined.</p></div><div className="qpRegimeGrid">{rows.map(([n,ev,count],i)=><article key={n}><small>{n}</small><b className={ev>=0?'good':'bad'}>{ev>=0?'+':''}{ev.toFixed(2)}R</b><span>{count} trades · {count<10?'low confidence':'usable'}</span><div className={`qpRegimeHeat h${i}`}/></article>)}</div><div className="qpRegimeMatrix"><div className="qpMatrixHead">REGIME TRANSITION VIEW</div>{['Trend','Chop','Low vol','High vol'].map((r,ri)=>['Trend','Chop','Low vol','High vol'].map((c,ci)=><div key={`${r}-${c}`}><small>{r} → {c}</small><b>{18+((ri*13+ci*9)%51)}%</b></div>))}</div></div>;
 }
 
-function RegimeView({returns}){
-  const data=['Bull Lo','Bull Hi','Bear Lo','Bear Hi'].map((name,i)=>{const subset=returns.filter((_,j)=>j%4===i);return {name,pnl:subset.reduce((s,v)=>s+v,0),ev:mean(subset),n:subset.length}});
-  let eq=100000; const timeline=returns.map((r,i)=>{eq+=r*500;return {i,equity:eq,regime:i%4}});
-  return <div className="regimePage"><div className="mcTopbar"><div><div className="eyebrow">MARKET REGIMES</div><h1>Regime analysis</h1></div><button className="ghost"><RefreshCw size={14}/> Recompute</button></div>
-    <div className="regimeCards">{data.map((d,i)=><div className={`regimeCard rc${i}`} key={d.name}><div>{d.name}</div><b>{d.ev.toFixed(2)}R</b><span>{d.n} trades • {d.pnl.toFixed(1)}R total</span></div>)}</div>
-    <div className="panel chartPanel"><div className="chartTitle">Realized equity by regime</div><ResponsiveContainer width="100%" height={330}><AreaChart data={timeline}><CartesianGrid stroke="#17191c" vertical={false}/><XAxis dataKey="i" stroke="#555a61"/><YAxis stroke="#555a61"/><Tooltip contentStyle={{background:'#090a0b',border:'1px solid #2b2e33'}}/><Area dataKey="equity" stroke="#d5d7da" fill="#24272b"/></AreaChart></ResponsiveContainer></div>
-    <div className="transitionGrid">{data.map((r,ri)=>data.map((c,ci)=><div className={`transition t${(ri+ci)%4}`} key={`${ri}-${ci}`}><small>{r.name} → {c.name}</small><b>{Math.round(12+((ri*17+ci*11)%48))}%</b></div>))}</div>
-  </div>
-}
-
-function DataView({returns,onImport,usePersonalModel,onResetPersonal}){
-  const m=metricSet(returns);
-  const upload=e=>{const f=e.target.files?.[0]; if(!f)return; const reader=new FileReader(); reader.onload=()=>{const text=String(reader.result);const vals=text.split(/\r?\n/).flatMap(line=>line.split(',')).map(v=>Number(v.trim())).filter(Number.isFinite);if(vals.length)onImport(vals)};reader.readAsText(f);e.target.value='';};
-  return <div className="dataPage">
-    <div className="mcTopbar"><div><div className="eyebrow">DATA</div><h1>Research dataset</h1></div><div className="runGroup">{!usePersonalModel&&<button className="ghost" onClick={onResetPersonal}><RefreshCw size={14}/> Personal model</button>}<label className="run uploadBtn"><Upload size={14}/> Import CSV<input type="file" accept=".csv,.txt" onChange={upload}/></label></div></div>
-    <div className="heroMetrics"><SmallMetric label="EVAL POSITION IDEAS" value={usePersonalModel?personalModel.evalPositionIdeas:returns.length}/><SmallMetric label="EVAL WIN RATE" value={usePersonalModel?fmtPct(personalModel.winProbability*100):fmtPct(m.wr)} tone="good"/><SmallMetric label="VETTED PRACTICE WINS" value={usePersonalModel?personalModel.practiceWinners:'—'} tone="violet"/><SmallMetric label="1R ANCHOR" value={usePersonalModel?`$${personalModel.rAnchorDollarsPerMNQEquivalent.toFixed(2)}`:'Imported R'} tone="warn"/></div>
-    <div className="panel dataHelp"><h3>{usePersonalModel?'Personal Monte Carlo dataset loaded':'Imported dataset active'}</h3>{usePersonalModel?<><p>{personalModel.description}</p><p className="mutedText">The Monte Carlo does not inflate win rate with the practice winners. It keeps the eval probabilities and only uses the vetted practice trades to expand the distribution of winning outcomes.</p></>:<p>The imported numeric return dataset is active. Use “Personal model” to restore the built-in eval + cleaned practice model.</p>}</div>
-    <div className="panel dataHelp"><h3>Regime tagging next</h3><p>Market-data timestamps can be joined to these trades to test consolidation, trend, low/high volume, volatility, and session conditions without changing the core personal Monte Carlo dataset.</p></div>
-  </div>
+function DataPage(){
+  return <div className="qpToolPage"><div className="qpToolTitle"><span>DATA</span><h1>Research dataset</h1><p>Your current personal model separates probability from payoff shape so filtered practice winners do not inflate the win rate.</p></div><div className="qpDataMetrics"><Stat label="EVAL IDEAS" value={personalModel.evalPositionIdeas}/><Stat label="EVAL WINS" value={personalModel.evalWins}/><Stat label="EVAL LOSSES" value={personalModel.evalLosses}/><Stat label="BREAKEVENS" value={personalModel.evalBreakevens}/><Stat label="VETTED PRACTICE WINS" value={personalModel.practiceWinners} tone="violet"/></div><div className="qpDataTable"><div><b>Probability model</b><span>39.3% win · 53.6% loss · 7.1% breakeven</span><small>serious eval only</small></div><div><b>Loss library</b><span>{personalModel.evalLosses} outcomes</span><small>eval losses only</small></div><div><b>Winner library</b><span>{personalModel.evalWins+personalModel.practiceWinners} outcomes</span><small>eval + vetted practice</small></div><div><b>Stress sample</b><span>7/22 tilt day</span><small>excluded from baseline</small></div></div><label className="qpUpload"><Upload size={13}/> Import another return dataset<input type="file" accept=".csv,.txt"/></label></div>;
 }
 
 export default function App(){
-  const [tab,setTab]=useState('Terminal');
-  const [returns,setReturns]=useState(sampleR);
-  const [usePersonalModel,setUsePersonalModel]=useState(true);
-  const tabs=[['Terminal',TerminalSquare],['Volatility',Waves],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',BarChart3],['Data',Database]];
-  const importReturns=(vals)=>{setReturns(vals);setUsePersonalModel(false)};
-  const resetPersonal=()=>{setReturns(personalModel.evalR);setUsePersonalModel(true)};
-  const sourceLabel=usePersonalModel?'Eval + clean practice':'Imported CSV';
-  return <div className="appShell">
-    <header className="topNav"><div className="brand"><div className="mark">Q</div><span>QNT</span><small>RESEARCH TERMINAL</small></div><nav>{tabs.map(([t,I])=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}><I size={14}/>{t}</button>)}</nav><div className="rightNav"><Search size={16}/><span className="statusDot"/>RESEARCH</div></header>
-    <main>{tab==='Terminal'&&<TerminalView returns={returns} sourceLabel={sourceLabel}/>} {tab==='Volatility'&&<VolatilityLab/>} {tab==='Prop Firm'&&<MonteCarloView returns={returns} propMode usePersonalModel={usePersonalModel}/>} {tab==='Verdict'&&<VerdictView returns={returns}/>} {tab==='Regimes'&&<RegimeView returns={returns}/>} {tab==='Risk & Monte Carlo'&&<MonteCarloView returns={returns} usePersonalModel={usePersonalModel}/>} {tab==='Data'&&<DataView returns={returns} onImport={importReturns} usePersonalModel={usePersonalModel} onResetPersonal={resetPersonal}/>}</main>
-  </div>
+  const [tab,setTab]=useState('Workspace');
+  const tabs=[
+    ['Workspace',Braces],
+    ['Prop Firm',Sigma],
+    ['Verdict',Activity],
+    ['Regimes',BarChart3],
+    ['Risk & Monte Carlo',BarChart3],
+    ['Volatility',Waves],
+    ['Data',Database],
+  ];
+  return <div className="appShell qpCore">
+    <header className="topNav qpResearchNav"><nav>{tabs.map(([name,Icon])=><button key={name} className={tab===name?'active':''} onClick={()=>setTab(name)}><Icon size={12}/>{name}</button>)}</nav><div className="rightNav"><span className="statusDot"/> PERSONAL MODEL</div></header>
+    <main>
+      {tab==='Workspace'&&<Workspace/>}
+      {tab==='Verdict'&&<Verdict/>}
+      {tab==='Regimes'&&<Regimes/>}
+      {tab==='Volatility'&&<VolatilityLab/>}
+      {tab==='Data'&&<DataPage/>}
+      {(tab==='Prop Firm'||tab==='Risk & Monte Carlo')&&<div className="qpLoadingTool"><Settings2 size={15}/><span>Opening simulation workspace…</span></div>}
+    </main>
+  </div>;
 }
