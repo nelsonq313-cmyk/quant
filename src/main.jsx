@@ -11,6 +11,7 @@ import './montecarlo-validation.css';
 import './model-stats-strip.css';
 import './risk-v2.css';
 import './prop-v2.css';
+import './terminal-home.css';
 import './product-shell.css';
 import './terminal-shell.css';
 import './terminal-market.css';
