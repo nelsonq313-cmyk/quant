@@ -16,6 +16,7 @@ import './terminal-shell.css';
 import './terminal-market.css';
 import './data-terminal.css';
 import './functional.css';
+import './responsive-overrides.css';
 
 function Root(){
   const [mcMode,setMcMode]=useState(null);
