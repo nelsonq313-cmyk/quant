@@ -5,6 +5,7 @@ import MonteCarloResearch from './MonteCarloResearch.jsx';
 import './styles.css';
 import './volatility.css';
 import './montecarlo.css';
+import './montecarlo-validation.css';
 import './product-shell.css';
 import './functional.css';
 
