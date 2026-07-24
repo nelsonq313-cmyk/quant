@@ -12,6 +12,10 @@ A QuantPad-inspired personal quant research workspace focused on futures researc
 - Return-vs-drawdown scatter analysis
 - Strategy verdict / edge grading
 - Regime-analysis workspace
+- AAPL-style implied-volatility research lab with an interactive 3D surface
+- Call / put / blended volatility views, skew and term-structure metrics
+- Free delayed options-data adapter with server-side token protection and caching
+- Local snapshot archive for recent IV-surface captures
 - CSV / trade-return import
 
 ## Run
@@ -20,6 +24,16 @@ A QuantPad-inspired personal quant research workspace focused on futures researc
 npm install
 npm run dev
 ```
+
+## Free delayed options data
+
+The volatility lab can use Market Data's free delayed options API. Add the API token as a private Replit Secret named:
+
+```text
+MARKETDATA_TOKEN
+```
+
+Do not put the token in frontend code or commit it to GitHub. The server requests a small set of DTE/strike buckets and caches the result for 12 hours to conserve the free daily allowance. If no token is configured, the volatility page stays functional with a clearly labeled demo surface rather than pretending demo values are real market data.
 
 ## Next integration
 
