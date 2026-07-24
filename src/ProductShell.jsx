@@ -49,6 +49,7 @@ const commandDefs=[
 
 const emitResearch=tab=>window.dispatchEvent(new CustomEvent('qnt:navigate',{detail:{type:'research',tab}}));
 const emitMarket=detail=>window.dispatchEvent(new CustomEvent('qnt:market-command',{detail}));
+const emitCopilot=prompt=>window.dispatchEvent(new CustomEvent('qnt:copilot-prompt',{detail:{prompt}}));
 
 function LeftRail({section,setSection}){
   const items=[['Projects',LayoutGrid],['Copilot',MessageSquareText],['Market',Gauge],['Library',BookOpen],['API',Server]];
@@ -74,10 +75,15 @@ function ApiView(){
 function CopilotShell(){return <div className="qpsCopilotShell"><div className="qpsWorkspaceStrip"><div><Folder size={13}/> NQ edge research <ChevronRight size={12}/><b>personal_trade_model.qnt</b></div><div><span className="qpsLive"/> personal model loaded</div></div><App/></div>}
 
 function CommandPalette({open,onClose,setSection}){
-  const [query,setQuery]=useState('');useEffect(()=>{if(open)setQuery('')},[open]);
-  if(!open)return null;const q=query.trim().toUpperCase(),visible=commandDefs.filter(x=>`${x[0]} ${x[1]} ${x[2]}`.toUpperCase().includes(q));
-  const run=item=>{const [code,,,type,target]=item;if(type==='shell')setSection(target);else if(type==='research'){setSection('Copilot');emitResearch(target)}else{setSection('Market');try{sessionStorage.setItem('qnt.market.command',JSON.stringify({type,target}))}catch{}window.setTimeout(()=>emitMarket({type,target}),0)}try{const prior=JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]');localStorage.setItem('qnt.recent.commands',JSON.stringify([code,...prior.filter(x=>x!==code)].slice(0,8)))}catch{}onClose()};
-  return <div className="qpsCommandBackdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Enter'&&visible[0])run(visible[0])}} placeholder="Type a function: MC, PROP, VOL, NQ, AAPL, NEWS…"/><kbd>ESC</kbd></div><div className="qpsCommandList">{visible.map(item=><button key={item[0]} onClick={()=>run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">QNT command layer · navigation + instrument lookup + coverage status · unavailable feeds stay explicitly unavailable</div></div></div>
+  const [query,setQuery]=useState(''),[recent,setRecent]=useState([]);
+  useEffect(()=>{if(!open)return;setQuery('');try{setRecent(JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]'))}catch{setRecent([])}},[open]);
+  if(!open)return null;
+  const q=query.trim().toUpperCase(),matches=commandDefs.filter(x=>`${x[0]} ${x[1]} ${x[2]}`.toUpperCase().includes(q));
+  const recentDefs=recent.map(code=>commandDefs.find(x=>x[0]===code)).filter(Boolean),visible=q?matches:[...recentDefs,...commandDefs.filter(x=>!recent.includes(x[0]))];
+  const saveRecent=code=>{try{const prior=JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]'),next=[code,...prior.filter(x=>x!==code)].slice(0,8);localStorage.setItem('qnt.recent.commands',JSON.stringify(next));setRecent(next)}catch{}};
+  const run=item=>{const [code,,,type,target]=item;if(type==='shell')setSection(target);else if(type==='research'){setSection('Copilot');emitResearch(target)}else{setSection('Market');try{sessionStorage.setItem('qnt.market.command',JSON.stringify({type,target}))}catch{}window.setTimeout(()=>emitMarket({type,target}),0)}saveRecent(code);onClose()};
+  const askQnt=text=>{const prompt=String(text||'').trim();if(!prompt)return;setSection('Copilot');emitResearch('Workspace');saveRecent('ASK');window.setTimeout(()=>emitCopilot(prompt),25);onClose()};
+  return <div className="qpsCommandBackdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Enter'){e.preventDefault();if(matches[0])run(matches[0]);else askQnt(query)}}} placeholder="MC, PROP, VOL, NQ… or ask QNT anything about the research"/><kbd>ESC</kbd></div><div className="qpsCommandList">{q&&<button className="qpsAskCommand" onClick={()=>askQnt(query)}><kbd>ASK</kbd><div><b>Ask QNT Copilot</b><span>{query}</span></div><ChevronRight size={13}/></button>}{visible.map(item=><button key={item[0]} onClick={()=>run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">{!q&&recentDefs.length?`Recent functions first · ${recentDefs.map(x=>x[0]).join(' · ')}`:'Enter a non-command sentence to send it to QNT Copilot with research context.'}</div></div></div>
 }
 
 export default function ProductShell(){
