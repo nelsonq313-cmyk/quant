@@ -9,6 +9,7 @@ import MarketTerminal from './MarketTerminal.jsx';
 import TerminalHome from './TerminalHome.jsx';
 import BloombergDesk from './BloombergDesk.jsx';
 import AnalyticsTerminal from './AnalyticsTerminal.jsx';
+import TerminalWorkbench from './TerminalWorkbench.jsx';
 
 const projects = [
   { name: 'NQ edge research', desc: 'Primary strategy workspace using the curated eval sample and vetted practice payoff library.', files: 4, meta: 'Personal model', starred: true },
@@ -34,6 +35,7 @@ const recents = [
 
 const commandDefs = [
   ['HOME', 'Terminal overview', 'QNT command desk and system pulse', 'shell', 'Home'],
+  ['TOP', 'Top monitor', 'Dense cross-market watchlist, analytics and system pulse', 'workbench', 'TOP'],
   ['LAUNCH', 'Launchpad', 'Saved multi-panel market/research workstation', 'desk', 'LAUNCH'],
   ['DES', 'Security master', 'Returns, volatility, drawdown, range and history', 'desk', 'DES'],
   ['CHART', 'Chart workstation', 'Normalized multi-asset relative-performance research', 'desk', 'CHART'],
@@ -46,6 +48,10 @@ const commandDefs = [
   ['RVIV', 'Implied vs realized', 'ATM IV versus rolling realized volatility', 'analytics', 'RVIV'],
   ['GREEKS', 'Greeks matrix', 'Contract-level delta, gamma, theta and vega', 'analytics', 'GREEKS'],
   ['OI', 'OI concentration', 'Call/put open-interest and volume concentration', 'analytics', 'OI'],
+  ['VCA', 'Volatility & correlation analysis', 'Cross-sectional IV/RV, skew, term slope and correlation', 'workbench', 'VCA'],
+  ['QQL', 'QNT Query Language', 'Deterministic market-data query layer with sorting and metrics', 'workbench', 'QQL'],
+  ['SCEN', 'Scenario lab', 'Stress win rate, payoff scale and loss clustering', 'workbench', 'SCEN'],
+  ['EXP', 'Experiment registry', 'Saved scenario lineage, settings and results', 'workbench', 'EXP'],
   ['MC', 'Risk & Monte Carlo', 'Stopped-path Monte Carlo, sensitivity and model audit', 'research', 'Risk & Monte Carlo'],
   ['PROP', 'Prop Firm', 'Rule-driven prop simulation', 'research', 'Prop Firm'],
   ['VERDICT', 'Verdict', 'Transparent strategy evidence review', 'research', 'Verdict'],
@@ -63,25 +69,21 @@ const commandDefs = [
 ];
 
 const emitResearch = tab => window.dispatchEvent(new CustomEvent('qnt:navigate', { detail: { type: 'research', tab } }));
-const emitMarket = detail => window.dispatchEvent(new CustomEvent('qnt:market-command', { detail }));
 const emitCopilot = prompt => window.dispatchEvent(new CustomEvent('qnt:copilot-prompt', { detail: { prompt } }));
 const emitDesk = detail => window.dispatchEvent(new CustomEvent('qnt:desk-command', { detail }));
 const emitAnalytics = detail => window.dispatchEvent(new CustomEvent('qnt:analytics-command', { detail }));
+const emitWorkbench = detail => window.dispatchEvent(new CustomEvent('qnt:workbench-command', { detail }));
 
 function LeftRail({ section, setSection }) {
   const items = [
     { label: 'Home', section: 'Home', Icon: LayoutDashboard },
-    { label: 'Terminal', section: 'Desk', Icon: BarChart3, active: ['Desk', 'Analytics', 'Market'].includes(section) },
+    { label: 'Terminal', section: 'Workbench', Icon: BarChart3, active: ['Workbench', 'Desk', 'Analytics', 'Market'].includes(section) },
     { label: 'Research', section: 'Copilot', Icon: MessageSquareText },
     { label: 'Projects', section: 'Projects', Icon: LayoutGrid },
     { label: 'Library', section: 'Library', Icon: BookOpen },
     { label: 'API', section: 'API', Icon: Server },
   ];
-  return <aside className="qpsRail">
-    <div className="qpsRailBrand">Q</div>
-    <div className="qpsRailNav">{items.map(({ label, section: target, Icon, active }) => <button key={label} className={active || section === target ? 'active' : ''} onClick={() => setSection(target)} title={label}><Icon size={16}/><span>{label}</span></button>)}</div>
-    <div className="qpsRailBottom"><button title="Research data" onClick={() => { setSection('Copilot'); emitResearch('Data'); }}><Database size={16}/></button><div className="qpsAvatar">N</div></div>
-  </aside>;
+  return <aside className="qpsRail"><div className="qpsRailBrand">Q</div><div className="qpsRailNav">{items.map(({ label, section: target, Icon, active }) => <button key={label} className={active || section === target ? 'active' : ''} onClick={() => setSection(target)} title={label}><Icon size={16}/><span>{label}</span></button>)}</div><div className="qpsRailBottom"><button title="Research data" onClick={() => { setSection('Copilot'); emitResearch('Data'); }}><Database size={16}/></button><div className="qpsAvatar">N</div></div></aside>;
 }
 
 function ProjectsView({ openWorkspace }) {
@@ -101,17 +103,11 @@ function ApiView() {
   const [health, setHealth] = useState(null), [error, setError] = useState('');
   const load = async () => { try { const r = await fetch('/api/status'); const d = await r.json(); setHealth(d); setError(''); } catch (e) { setError(e.message); } };
   useEffect(() => { load(); }, []);
-  const rows = [
-    ['QNT server', Boolean(health?.server?.ok), health?.server?.now || '—', `${health?.server?.cacheEntries ?? 0} cache entries`],
-    ['MarketData.app', Boolean(health?.marketData?.configured), health?.marketData?.lastSuccess || 'No successful request yet', health?.marketData?.lastError || health?.marketData?.mode || '—'],
-    ['OpenAI', Boolean(health?.openai?.configured), health?.openai?.lastSuccess || 'No successful request yet', health?.openai?.lastError || health?.openai?.model || '—'],
-  ];
+  const rows = [['QNT server', Boolean(health?.server?.ok), health?.server?.now || '—', `${health?.server?.cacheEntries ?? 0} cache entries`], ['MarketData.app', Boolean(health?.marketData?.configured), health?.marketData?.lastSuccess || 'No successful request yet', health?.marketData?.lastError || health?.marketData?.mode || '—'], ['OpenAI', Boolean(health?.openai?.configured), health?.openai?.lastSuccess || 'No successful request yet', health?.openai?.lastError || health?.openai?.model || '—']];
   return <div className="qpsPage"><div className="qpsPageHead"><div><span>TERMINAL HEALTH</span><h1>API & data status</h1><p>Secrets stay server-side. This page reports connection state, recent success/error state and cache usage.</p></div><button className="qpsPrimary" onClick={load}>Refresh</button></div>{error && <div className="qpsApiError">{error}</div>}<div className="qpsApiTable">{rows.map(([name, ok, last, detail]) => <div key={name}><span className={ok ? 'live' : 'off'}/><b>{name}</b><em>{ok ? 'CONNECTED' : 'NOT CONFIGURED'}</em><small>{last}</small><p>{detail}</p></div>)}</div></div>;
 }
 
-function CopilotShell() {
-  return <div className="qpsCopilotShell"><div className="qpsWorkspaceStrip"><div><Folder size={13}/> NQ edge research <ChevronRight size={12}/><b>personal_trade_model.qnt</b></div><div><span className="qpsLive"/> personal model loaded</div></div><App/></div>;
-}
+function CopilotShell() { return <div className="qpsCopilotShell"><div className="qpsWorkspaceStrip"><div><Folder size={13}/> NQ edge research <ChevronRight size={12}/><b>personal_trade_model.qnt</b></div><div><span className="qpsLive"/> personal model loaded</div></div><App/></div>; }
 
 function parseDeskQuery(text) {
   const parts = String(text || '').trim().toUpperCase().split(/\s+/).filter(Boolean), fn = parts[0];
@@ -119,31 +115,31 @@ function parseDeskQuery(text) {
   const symbols = parts.slice(1).filter(x => /^[A-Z][A-Z0-9.\-]{0,11}$/.test(x));
   return { fn, symbol: ['DES', 'OMON'].includes(fn) ? symbols[0] : undefined, symbols: ['CHART', 'CORR'].includes(fn) ? symbols : undefined };
 }
-
 function parseAnalyticsQuery(text) {
   const parts = String(text || '').trim().toUpperCase().split(/\s+/).filter(Boolean), fn = parts[0];
   if (!['CHAIN', 'SURF', 'SKEW', 'TERM', 'RVIV', 'GREEKS', 'OI'].includes(fn)) return null;
-  const args = parts.slice(1);
-  const symbol = args.find(x => /^[A-Z][A-Z0-9.\-]{0,11}$/.test(x));
-  const dte = args.map(Number).find(x => Number.isInteger(x) && x >= 0 && x <= 730);
+  const args = parts.slice(1), symbol = args.find(x => /^[A-Z][A-Z0-9.\-]{0,11}$/.test(x)), dte = args.map(Number).find(x => Number.isInteger(x) && x >= 0 && x <= 730);
   return { fn, symbol, dte };
+}
+function parseWorkbenchQuery(text) {
+  const fn = String(text || '').trim().toUpperCase().split(/\s+/)[0];
+  return ['TOP', 'VCA', 'QQL', 'SCEN', 'EXP'].includes(fn) ? { fn } : null;
 }
 
 function CommandPalette({ open, onClose, setSection }) {
   const [query, setQuery] = useState(''), [recent, setRecent] = useState([]);
   useEffect(() => { if (!open) return; setQuery(''); try { setRecent(JSON.parse(localStorage.getItem('qnt.recent.commands') || '[]')); } catch { setRecent([]); } }, [open]);
   if (!open) return null;
-  const q = query.trim().toUpperCase();
-  const matches = commandDefs.filter(x => `${x[0]} ${x[1]} ${x[2]}`.toUpperCase().includes(q));
-  const recentDefs = recent.map(code => commandDefs.find(x => x[0] === code)).filter(Boolean);
-  const visible = q ? matches : [...recentDefs, ...commandDefs.filter(x => !recent.includes(x[0]))];
+  const q = query.trim().toUpperCase(), matches = commandDefs.filter(x => `${x[0]} ${x[1]} ${x[2]}`.toUpperCase().includes(q));
+  const recentDefs = recent.map(code => commandDefs.find(x => x[0] === code)).filter(Boolean), visible = q ? matches : [...recentDefs, ...commandDefs.filter(x => !recent.includes(x[0]))];
   const saveRecent = code => { try { const prior = JSON.parse(localStorage.getItem('qnt.recent.commands') || '[]'); const next = [code, ...prior.filter(x => x !== code)].slice(0, 8); localStorage.setItem('qnt.recent.commands', JSON.stringify(next)); setRecent(next); } catch {} };
   const runDesk = detail => { setSection('Desk'); try { sessionStorage.setItem('qnt.desk.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitDesk(detail), 0); saveRecent(detail.fn); onClose(); };
   const runAnalytics = detail => { setSection('Analytics'); try { sessionStorage.setItem('qnt.analytics.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitAnalytics(detail), 0); saveRecent(detail.fn); onClose(); };
-  const run = item => { const [code, , , type, target] = item; if (type === 'shell') setSection(target); else if (type === 'research') { setSection('Copilot'); emitResearch(target); } else if (type === 'desk') { runDesk({ fn: target }); return; } else if (type === 'analytics') { runAnalytics({ fn: target }); return; } else { setSection('Desk'); runDesk({ fn: 'DES', symbol: target }); return; } saveRecent(code); onClose(); };
+  const runWorkbench = detail => { setSection('Workbench'); try { sessionStorage.setItem('qnt.workbench.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitWorkbench(detail), 0); saveRecent(detail.fn); onClose(); };
+  const run = item => { const [code, , , type, target] = item; if (type === 'shell') setSection(target); else if (type === 'research') { setSection('Copilot'); emitResearch(target); } else if (type === 'desk') { runDesk({ fn: target }); return; } else if (type === 'analytics') { runAnalytics({ fn: target }); return; } else if (type === 'workbench') { runWorkbench({ fn: target }); return; } else { runDesk({ fn: 'DES', symbol: target }); return; } saveRecent(code); onClose(); };
   const askQnt = text => { const prompt = String(text || '').trim(); if (!prompt) return; setSection('Copilot'); emitResearch('Workspace'); saveRecent('ASK'); window.setTimeout(() => emitCopilot(prompt), 25); onClose(); };
-  const submit = () => { const analytics = parseAnalyticsQuery(query); if (analytics) { runAnalytics(analytics); return; } const desk = parseDeskQuery(query); if (desk) { runDesk(desk); return; } if (matches[0]) run(matches[0]); else askQnt(query); };
-  return <div className="qpsCommandBackdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') onClose(); if (e.key === 'Enter') { e.preventDefault(); submit(); } }} placeholder="DES QQQ · CHAIN AAPL 30 · RVIV QQQ · MC · ask QNT…"/><kbd>ESC</kbd></div><div className="qpsCommandList">{q && <button className="qpsAskCommand" onClick={() => askQnt(query)}><kbd>ASK</kbd><div><b>Ask QNT Copilot</b><span>{query}</span></div><ChevronRight size={13}/></button>}{visible.map(item => <button key={item[0]} onClick={() => run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">Examples: DES QQQ · OMON AAPL · CHAIN AAPL 30 · SURF QQQ · SKEW AAPL 60 · RVIV QQQ</div></div></div>;
+  const submit = () => { const analytics = parseAnalyticsQuery(query); if (analytics) return runAnalytics(analytics); const desk = parseDeskQuery(query); if (desk) return runDesk(desk); const wb = parseWorkbenchQuery(query); if (wb) return runWorkbench(wb); if (matches[0]) run(matches[0]); else askQnt(query); };
+  return <div className="qpsCommandBackdrop" onMouseDown={e => e.target === e.currentTarget && onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Escape') onClose(); if (e.key === 'Enter') { e.preventDefault(); submit(); } }} placeholder="TOP · VCA · QQL · SCEN · DES QQQ · CHAIN AAPL 30 · MC…"/><kbd>ESC</kbd></div><div className="qpsCommandList">{q && <button className="qpsAskCommand" onClick={() => askQnt(query)}><kbd>ASK</kbd><div><b>Ask QNT Copilot</b><span>{query}</span></div><ChevronRight size={13}/></button>}{visible.map(item => <button key={item[0]} onClick={() => run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">TOP · VCA · QQL · SCEN · EXP · DES QQQ · OMON AAPL · CHAIN AAPL 30 · SURF QQQ · MC</div></div></div>;
 }
 
 export default function ProductShell() {
@@ -153,21 +149,11 @@ export default function ProductShell() {
   const openMarket = symbol => { setSection('Desk'); const detail = { fn: 'DES', symbol }; try { sessionStorage.setItem('qnt.desk.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitDesk(detail), 0); };
   const openDesk = (fn = 'LAUNCH', symbol) => { const detail = { fn, symbol }; setSection('Desk'); try { sessionStorage.setItem('qnt.desk.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitDesk(detail), 0); };
   const askCopilot = prompt => { setSection('Copilot'); emitResearch('Workspace'); window.setTimeout(() => emitCopilot(prompt), 25); };
-
   useEffect(() => {
     const key = e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setCommandOpen(true); } if (e.key === 'Escape') setCommandOpen(false); };
-    const route = e => {
-      const d = e.detail || {};
-      if (d.section === 'Analytics') { setSection('Analytics'); const detail = { fn: d.fn || 'CHAIN', symbol: d.symbol, dte: d.dte }; try { sessionStorage.setItem('qnt.analytics.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitAnalytics(detail), 0); }
-      else if (d.section === 'Desk' || d.section === 'Terminal') { setSection('Desk'); const detail = { fn: d.fn || 'LAUNCH', symbol: d.symbol, symbols: d.symbols }; try { sessionStorage.setItem('qnt.desk.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitDesk(detail), 0); }
-      else if (d.section === 'Research') { setSection('Copilot'); emitResearch(d.tab || 'Workspace'); }
-      else if (d.section === 'API') setSection('API');
-    };
-    window.addEventListener('keydown', key);
-    window.addEventListener('qnt:route', route);
-    return () => { window.removeEventListener('keydown', key); window.removeEventListener('qnt:route', route); };
+    const route = e => { const d = e.detail || {}; if (d.section === 'Analytics') { setSection('Analytics'); const detail = { fn: d.fn || 'CHAIN', symbol: d.symbol, dte: d.dte }; try { sessionStorage.setItem('qnt.analytics.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitAnalytics(detail), 0); } else if (d.section === 'Workbench') { setSection('Workbench'); const detail = { fn: d.fn || 'TOP' }; try { sessionStorage.setItem('qnt.workbench.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitWorkbench(detail), 0); } else if (d.section === 'Desk' || d.section === 'Terminal') { setSection('Desk'); const detail = { fn: d.fn || 'LAUNCH', symbol: d.symbol, symbols: d.symbols }; try { sessionStorage.setItem('qnt.desk.command', JSON.stringify(detail)); } catch {} window.setTimeout(() => emitDesk(detail), 0); } else if (d.section === 'Research') { setSection('Copilot'); emitResearch(d.tab || 'Workspace'); } else if (d.section === 'API') setSection('API'); };
+    window.addEventListener('keydown', key); window.addEventListener('qnt:route', route); return () => { window.removeEventListener('keydown', key); window.removeEventListener('qnt:route', route); };
   }, []);
-
-  const title = section === 'Home' ? 'QNT Terminal' : ['Desk', 'Analytics', 'Market'].includes(section) ? 'QNT Terminal' : section === 'Copilot' ? 'QNT Research' : section;
-  return <div className="productShell"><LeftRail section={section} setSection={setSection}/><div className="qpsMain"><header className="qpsTopbar"><div className="qpsTopTitle"><WandSparkles size={14}/><span>{title}</span></div><button className="qpsTopSearch qpsTopSearchButton" onClick={() => setCommandOpen(true)}><Search size={13}/><span>DES · CHAIN · SURF · RVIV · CORR · MC · ask QNT</span><kbd>⌘ K</kbd></button><div className="qpsActions"><Activity size={14}/><span className="qpsLive"/> RESEARCH ONLINE</div></header>{section === 'Home' && <TerminalHome openResearch={openResearch} openMarket={openMarket} openDesk={openDesk} openApi={() => setSection('API')} openCommand={() => setCommandOpen(true)} askCopilot={askCopilot}/>} {section === 'Desk' && <BloombergDesk/>} {section === 'Analytics' && <AnalyticsTerminal/>} {section === 'Projects' && <ProjectsView openWorkspace={openWorkspace}/>} {section === 'Copilot' && <CopilotShell/>}{section === 'Market' && <MarketTerminal/>}{section === 'Library' && <LibraryView openWorkspace={openWorkspace}/>} {section === 'API' && <ApiView/>}</div><CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} setSection={setSection}/></div>;
+  const title = section === 'Home' ? 'QNT Terminal' : ['Workbench', 'Desk', 'Analytics', 'Market'].includes(section) ? 'QNT Terminal' : section === 'Copilot' ? 'QNT Research' : section;
+  return <div className="productShell"><LeftRail section={section} setSection={setSection}/><div className="qpsMain"><header className="qpsTopbar"><div className="qpsTopTitle"><WandSparkles size={14}/><span>{title}</span></div><button className="qpsTopSearch qpsTopSearchButton" onClick={() => setCommandOpen(true)}><Search size={13}/><span>TOP · VCA · QQL · SCEN · DES · SURF · MC</span><kbd>⌘ K</kbd></button><div className="qpsActions"><Activity size={14}/><span className="qpsLive"/> RESEARCH ONLINE</div></header>{section === 'Home' && <TerminalHome openResearch={openResearch} openMarket={openMarket} openDesk={openDesk} openApi={() => setSection('API')} openCommand={() => setCommandOpen(true)} askCopilot={askCopilot}/>} {section === 'Workbench' && <TerminalWorkbench/>} {section === 'Desk' && <BloombergDesk/>} {section === 'Analytics' && <AnalyticsTerminal/>} {section === 'Projects' && <ProjectsView openWorkspace={openWorkspace}/>} {section === 'Copilot' && <CopilotShell/>}{section === 'Market' && <MarketTerminal/>}{section === 'Library' && <LibraryView openWorkspace={openWorkspace}/>} {section === 'API' && <ApiView/>}</div><CommandPalette open={commandOpen} onClose={() => setCommandOpen(false)} setSection={setSection}/></div>;
 }
