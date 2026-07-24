@@ -6,6 +6,7 @@ import './styles.css';
 import './volatility.css';
 import './montecarlo.css';
 import './product-shell.css';
+import './functional.css';
 
 function Root(){
   const [mcMode,setMcMode]=useState(null);
