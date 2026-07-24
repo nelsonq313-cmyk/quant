@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import ProductShell from './ProductShell.jsx';
 import MonteCarloResearch from './MonteCarloResearch.jsx';
+import RiskMonteCarloV2 from './RiskMonteCarloV2.jsx';
 import ModelStatsStrip from './ModelStatsStrip.jsx';
 import './styles.css';
 import './volatility.css';
 import './montecarlo.css';
 import './montecarlo-validation.css';
 import './model-stats-strip.css';
+import './risk-v2.css';
 import './product-shell.css';
 import './functional.css';
 
@@ -34,7 +36,7 @@ function Root(){
 
   return <>
     <ProductShell />
-    {mcMode&&<div className="qmcOverlay"><ModelStatsStrip/><MonteCarloResearch propMode={mcMode==='prop'}/></div>}
+    {mcMode&&<div className="qmcOverlay"><ModelStatsStrip/>{mcMode==='risk'?<RiskMonteCarloV2/>:<MonteCarloResearch propMode/>}</div>}
   </>;
 }
 
