@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, BookOpen, ChevronRight, Command, Database, FileCode2, Folder, FolderKanban,
+  Activity, BarChart3, BookOpen, ChevronRight, Command, Database, FileCode2, Folder, FolderKanban,
   Gauge, LayoutDashboard, LayoutGrid, MessageSquareText, Plus, Search, Server, Star, WandSparkles,
 } from 'lucide-react';
 import App from './App.jsx';
 import MarketTerminal from './MarketTerminal.jsx';
 import TerminalHome from './TerminalHome.jsx';
+import BloombergDesk from './BloombergDesk.jsx';
 
 const projects=[
   {name:'NQ edge research',desc:'Primary strategy workspace using the curated eval sample and vetted practice payoff library.',files:4,meta:'Personal model',starred:true},
@@ -30,12 +31,20 @@ const recents=[
 ];
 
 const commandDefs=[
-  ['HOME','Terminal overview','Bloomberg-style QNT desk and system pulse','shell','Home'],
+  ['HOME','Terminal overview','QNT command desk and system pulse','shell','Home'],
+  ['LAUNCH','Launchpad','Saved multi-panel market/research workstation','desk','LAUNCH'],
+  ['DES','Security master','Returns, volatility, drawdown, range and history','desk','DES'],
+  ['CHART','Chart workstation','Normalized multi-asset relative-performance research','desk','CHART'],
+  ['CORR','Correlation matrix','Aligned daily-return relationship matrix','desk','CORR'],
+  ['OMON','Options monitor','Expiration IV, skew, OI, volume and expected-move monitor','desk','OMON'],
+  ['NEWS','News monitor','Provider-backed beta stock headlines and source links','desk','NEWS'],
+  ['EARN','Earnings monitor','Historical/future earnings-calendar research','desk','EARN'],
   ['MC','Risk & Monte Carlo','Stopped-path Monte Carlo, sensitivity and model audit','research','Risk & Monte Carlo'],
   ['PROP','Prop Firm','Rule-driven prop simulation','research','Prop Firm'],
   ['VERDICT','Verdict','Transparent strategy evidence review','research','Verdict'],
   ['REGIME','Regimes','Market-regime research pipeline','research','Regimes'],
   ['VOL','Volatility','Interactive 3D IV surface and options analytics','research','Volatility'],
+  ['SURF','IV Surface','Open the interactive volatility surface workstation','research','Volatility'],
   ['DATA','Data','Dataset provenance and import workspace','research','Data'],
   ['MARKET','Market workstation','Quotes, price history, notes and provider health','shell','Market'],
   ['WORK','Research workspace','Editable quant research workspace + Copilot','research','Workspace'],
@@ -46,16 +55,16 @@ const commandDefs=[
   ['NVDA','NVDA security','Open NVDA in the market workstation','symbol','NVDA'],
   ['NQ','NQ futures','Open coverage status for direct NQ futures data','symbol','NQ'],
   ['ES','ES futures','Open coverage status for direct ES futures data','symbol','ES'],
-  ['NEWS','News terminal','Show news-feed coverage status; never fabricate headlines','capability','NEWS'],
   ['CALENDAR','Economic calendar','Show calendar-feed coverage status; never fabricate events','capability','CALENDAR'],
 ];
 
 const emitResearch=tab=>window.dispatchEvent(new CustomEvent('qnt:navigate',{detail:{type:'research',tab}}));
 const emitMarket=detail=>window.dispatchEvent(new CustomEvent('qnt:market-command',{detail}));
 const emitCopilot=prompt=>window.dispatchEvent(new CustomEvent('qnt:copilot-prompt',{detail:{prompt}}));
+const emitDesk=detail=>window.dispatchEvent(new CustomEvent('qnt:desk-command',{detail}));
 
 function LeftRail({section,setSection}){
-  const items=[['Home',LayoutDashboard],['Projects',LayoutGrid],['Copilot',MessageSquareText],['Market',Gauge],['Library',BookOpen],['API',Server]];
+  const items=[['Home',LayoutDashboard],['Desk',BarChart3],['Projects',LayoutGrid],['Copilot',MessageSquareText],['Market',Gauge],['Library',BookOpen],['API',Server]];
   return <aside className="qpsRail"><div className="qpsRailBrand">Q</div><div className="qpsRailNav">{items.map(([name,Icon])=><button key={name} className={section===name?'active':''} onClick={()=>setSection(name)} title={name}><Icon size={16}/><span>{name}</span></button>)}</div><div className="qpsRailBottom"><button title="Research data" onClick={()=>{setSection('Copilot');emitResearch('Data')}}><Database size={16}/></button><div className="qpsAvatar">N</div></div></aside>;
 }
 
@@ -77,6 +86,13 @@ function ApiView(){
 
 function CopilotShell(){return <div className="qpsCopilotShell"><div className="qpsWorkspaceStrip"><div><Folder size={13}/> NQ edge research <ChevronRight size={12}/><b>personal_trade_model.qnt</b></div><div><span className="qpsLive"/> personal model loaded</div></div><App/></div>}
 
+function parseDeskQuery(text){
+  const parts=String(text||'').trim().toUpperCase().split(/\s+/).filter(Boolean),fn=parts[0];
+  if(!['LAUNCH','DES','CHART','CORR','OMON','NEWS','EARN'].includes(fn))return null;
+  const symbols=parts.slice(1).filter(x=>/^[A-Z0-9.\-]{1,12}$/.test(x));
+  return {fn,symbol:['DES','OMON','NEWS','EARN'].includes(fn)?symbols[0]:undefined,symbols:['CHART','CORR'].includes(fn)?symbols:undefined};
+}
+
 function CommandPalette({open,onClose,setSection}){
   const [query,setQuery]=useState(''),[recent,setRecent]=useState([]);
   useEffect(()=>{if(!open)return;setQuery('');try{setRecent(JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]'))}catch{setRecent([])}},[open]);
@@ -84,9 +100,11 @@ function CommandPalette({open,onClose,setSection}){
   const q=query.trim().toUpperCase(),matches=commandDefs.filter(x=>`${x[0]} ${x[1]} ${x[2]}`.toUpperCase().includes(q));
   const recentDefs=recent.map(code=>commandDefs.find(x=>x[0]===code)).filter(Boolean),visible=q?matches:[...recentDefs,...commandDefs.filter(x=>!recent.includes(x[0]))];
   const saveRecent=code=>{try{const prior=JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]'),next=[code,...prior.filter(x=>x!==code)].slice(0,8);localStorage.setItem('qnt.recent.commands',JSON.stringify(next));setRecent(next)}catch{}};
-  const run=item=>{const [code,,,type,target]=item;if(type==='shell')setSection(target);else if(type==='research'){setSection('Copilot');emitResearch(target)}else{setSection('Market');try{sessionStorage.setItem('qnt.market.command',JSON.stringify({type,target}))}catch{}window.setTimeout(()=>emitMarket({type,target}),0)}saveRecent(code);onClose()};
+  const runDesk=detail=>{setSection('Desk');try{sessionStorage.setItem('qnt.desk.command',JSON.stringify(detail))}catch{}window.setTimeout(()=>emitDesk(detail),0);saveRecent(detail.fn);onClose()};
+  const run=item=>{const [code,,,type,target]=item;if(type==='shell')setSection(target);else if(type==='research'){setSection('Copilot');emitResearch(target)}else if(type==='desk'){runDesk({fn:target});return}else{setSection('Market');try{sessionStorage.setItem('qnt.market.command',JSON.stringify({type,target}))}catch{}window.setTimeout(()=>emitMarket({type,target}),0)}saveRecent(code);onClose()};
   const askQnt=text=>{const prompt=String(text||'').trim();if(!prompt)return;setSection('Copilot');emitResearch('Workspace');saveRecent('ASK');window.setTimeout(()=>emitCopilot(prompt),25);onClose()};
-  return <div className="qpsCommandBackdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Enter'){e.preventDefault();if(matches[0])run(matches[0]);else askQnt(query)}}} placeholder="MC, PROP, VOL, NQ… or ask QNT anything about the research"/><kbd>ESC</kbd></div><div className="qpsCommandList">{q&&<button className="qpsAskCommand" onClick={()=>askQnt(query)}><kbd>ASK</kbd><div><b>Ask QNT Copilot</b><span>{query}</span></div><ChevronRight size={13}/></button>}{visible.map(item=><button key={item[0]} onClick={()=>run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">{!q&&recentDefs.length?`Recent functions first · ${recentDefs.map(x=>x[0]).join(' · ')}`:'Enter a non-command sentence to send it to QNT Copilot with research context.'}</div></div></div>;
+  const submit=()=>{const desk=parseDeskQuery(query);if(desk){runDesk(desk);return}if(matches[0])run(matches[0]);else askQnt(query)};
+  return <div className="qpsCommandBackdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Enter'){e.preventDefault();submit()}}} placeholder="DES QQQ · OMON AAPL · CHART QQQ SPY NVDA · MC · ask QNT…"/><kbd>ESC</kbd></div><div className="qpsCommandList">{q&&<button className="qpsAskCommand" onClick={()=>askQnt(query)}><kbd>ASK</kbd><div><b>Ask QNT Copilot</b><span>{query}</span></div><ChevronRight size={13}/></button>}{visible.map(item=><button key={item[0]} onClick={()=>run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">Examples: DES QQQ · OMON AAPL · NEWS NVDA · EARN AAPL · CHART QQQ SPY NVDA</div></div></div>;
 }
 
 export default function ProductShell(){
@@ -94,7 +112,8 @@ export default function ProductShell(){
   const openWorkspace=()=>{setSection('Copilot');emitResearch('Workspace')};
   const openResearch=tab=>{setSection('Copilot');emitResearch(tab)};
   const openMarket=symbol=>{setSection('Market');if(symbol){try{sessionStorage.setItem('qnt.market.command',JSON.stringify({type:'symbol',target:symbol}))}catch{}window.setTimeout(()=>emitMarket({type:'symbol',target:symbol}),0)}};
+  const openDesk=(fn='LAUNCH',symbol)=>{const detail={fn,symbol};setSection('Desk');try{sessionStorage.setItem('qnt.desk.command',JSON.stringify(detail))}catch{}window.setTimeout(()=>emitDesk(detail),0)};
   const askCopilot=prompt=>{setSection('Copilot');emitResearch('Workspace');window.setTimeout(()=>emitCopilot(prompt),25)};
   useEffect(()=>{const key=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setCommandOpen(true)}if(e.key==='Escape')setCommandOpen(false)};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[]);
-  return <div className="productShell"><LeftRail section={section} setSection={setSection}/><div className="qpsMain"><header className="qpsTopbar"><div className="qpsTopTitle"><WandSparkles size={14}/><span>{section==='Copilot'?'QNT Copilot':section==='Home'?'QNT Terminal':section}</span></div><button className="qpsTopSearch qpsTopSearchButton" onClick={()=>setCommandOpen(true)}><Search size={13}/><span>Search research, symbols, or commands</span><kbd>⌘ K</kbd></button><div className="qpsActions"><Activity size={14}/><span className="qpsLive"/> RESEARCH ONLINE</div></header>{section==='Home'&&<TerminalHome openResearch={openResearch} openMarket={openMarket} openApi={()=>setSection('API')} openCommand={()=>setCommandOpen(true)} askCopilot={askCopilot}/>} {section==='Projects'&&<ProjectsView openWorkspace={openWorkspace}/>} {section==='Copilot'&&<CopilotShell/>}{section==='Market'&&<MarketTerminal/>}{section==='Library'&&<LibraryView openWorkspace={openWorkspace}/>} {section==='API'&&<ApiView/>}</div><CommandPalette open={commandOpen} onClose={()=>setCommandOpen(false)} setSection={setSection}/></div>;
+  return <div className="productShell"><LeftRail section={section} setSection={setSection}/><div className="qpsMain"><header className="qpsTopbar"><div className="qpsTopTitle"><WandSparkles size={14}/><span>{section==='Copilot'?'QNT Copilot':section==='Home'?'QNT Terminal':section==='Desk'?'QNT Functions':section}</span></div><button className="qpsTopSearch qpsTopSearchButton" onClick={()=>setCommandOpen(true)}><Search size={13}/><span>DES QQQ · OMON AAPL · CHART · MC · ask QNT</span><kbd>⌘ K</kbd></button><div className="qpsActions"><Activity size={14}/><span className="qpsLive"/> RESEARCH ONLINE</div></header>{section==='Home'&&<TerminalHome openResearch={openResearch} openMarket={openMarket} openDesk={openDesk} openApi={()=>setSection('API')} openCommand={()=>setCommandOpen(true)} askCopilot={askCopilot}/>} {section==='Desk'&&<BloombergDesk/>} {section==='Projects'&&<ProjectsView openWorkspace={openWorkspace}/>} {section==='Copilot'&&<CopilotShell/>}{section==='Market'&&<MarketTerminal/>}{section==='Library'&&<LibraryView openWorkspace={openWorkspace}/>} {section==='API'&&<ApiView/>}</div><CommandPalette open={commandOpen} onClose={()=>setCommandOpen(false)} setSection={setSection}/></div>;
 }
