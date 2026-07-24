@@ -215,13 +215,17 @@ function RegimeView({returns}){
 
 function DataView({returns,onImport}){
   const m=metricSet(returns);
-  const upload=e=>{const f=e.target.files?.[0]; if(!f)return; const reader=new FileReader(); reader.onload=()=>{const text=String(reader.result);const vals=text.split(/\r?\n/).flatMap(line=>line.split(',')).map(v=>Number(v.trim())).filter(Number.isFinite);if(vals.length)onImport(vals)};reader.readAsText(f)};
+  const upload=e=>{const f=e.target.files?.[0]; if(!f)return; const reader=new FileReader(); reader.onload=()=>{const text=String(reader.result);const vals=text.split(/\r?\n/).flatMap(line=>line.split(',')).map(v=>Number(v.trim())).filter(Number.isFinite);if(vals.length)onImport(vals)};reader.readAsText(f);e.target.value='';};
   return <div className="dataPage"><div className="mcTopbar"><div><div className="eyebrow">DATA</div><h1>Research dataset</h1></div><label className="run uploadBtn"><Upload size={14}/> Import CSV<input type="file" accept=".csv,.txt" onChange={upload}/></label></div><div className="heroMetrics"><SmallMetric label="OBSERVATIONS" value={returns.length}/><SmallMetric label="WIN RATE" value={fmtPct(m.wr)} tone="good"/><SmallMetric label="EXPECTANCY" value={`${m.ev.toFixed(2)}R`} tone="good"/><SmallMetric label="REALIZED VOL" value={fmtPct(m.vol)} tone="violet"/></div><div className="panel dataHelp"><h3>Connect your futures API next</h3><p>The terminal is structured for NQ/MNQ/ES research. Your market-data API can feed candles, realized volatility, session ranges, volume, ATR, opening range, and regime features without requiring QuantPad’s bundled historical database.</p><p className="mutedText">For now, Monte Carlo and strategy research run directly from the trade-return dataset above.</p></div></div>
 }
 
 export default function App(){
   const [tab,setTab]=useState('Terminal'); const [returns,setReturns]=useState(sampleR);
+<<<<<<< HEAD
   const tabs=[['Terminal',TerminalSquare],['Volatility',Waves],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',Activity],['Data',Database]];
+=======
+  const tabs=[['Terminal',TerminalSquare],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',BarChart3],['Data',Database]];
+>>>>>>> 3473f43 (Initialize project configuration and dependencies)
   return <div className="appShell">
     <header className="topNav"><div className="brand"><div className="mark">Q</div><span>QNT</span><small>RESEARCH TERMINAL</small></div><nav>{tabs.map(([t,I])=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}><I size={14}/>{t}</button>)}</nav><div className="rightNav"><Search size={16}/><span className="statusDot"/>RESEARCH</div></header>
     <main>{tab==='Terminal'&&<TerminalView returns={returns}/>} {tab==='Volatility'&&<VolatilityLab/>} {tab==='Prop Firm'&&<MonteCarloView returns={returns} propMode/>} {tab==='Verdict'&&<VerdictView returns={returns}/>} {tab==='Regimes'&&<RegimeView returns={returns}/>} {tab==='Risk & Monte Carlo'&&<MonteCarloView returns={returns}/>} {tab==='Data'&&<DataView returns={returns} onImport={setReturns}/>}</main>
