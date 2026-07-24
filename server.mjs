@@ -171,7 +171,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use((_req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 } else {
   const vite = await createViteServer({
-    server: { middlewareMode: true, hmr: { server } },
+    server: { middlewareMode: true, hmr: { server }, allowedHosts: true },
     appType: 'spa',
   });
   app.use(vite.middlewares);
