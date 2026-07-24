@@ -221,11 +221,7 @@ function DataView({returns,onImport}){
 
 export default function App(){
   const [tab,setTab]=useState('Terminal'); const [returns,setReturns]=useState(sampleR);
-<<<<<<< HEAD
-  const tabs=[['Terminal',TerminalSquare],['Volatility',Waves],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',Activity],['Data',Database]];
-=======
-  const tabs=[['Terminal',TerminalSquare],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',BarChart3],['Data',Database]];
->>>>>>> 3473f43 (Initialize project configuration and dependencies)
+  const tabs=[['Terminal',TerminalSquare],['Volatility',Waves],['Prop Firm',Sigma],['Verdict',Activity],['Regimes',BarChart3],['Risk & Monte Carlo',BarChart3],['Data',Database]];
   return <div className="appShell">
     <header className="topNav"><div className="brand"><div className="mark">Q</div><span>QNT</span><small>RESEARCH TERMINAL</small></div><nav>{tabs.map(([t,I])=><button key={t} className={tab===t?'active':''} onClick={()=>setTab(t)}><I size={14}/>{t}</button>)}</nav><div className="rightNav"><Search size={16}/><span className="statusDot"/>RESEARCH</div></header>
     <main>{tab==='Terminal'&&<TerminalView returns={returns}/>} {tab==='Volatility'&&<VolatilityLab/>} {tab==='Prop Firm'&&<MonteCarloView returns={returns} propMode/>} {tab==='Verdict'&&<VerdictView returns={returns}/>} {tab==='Regimes'&&<RegimeView returns={returns}/>} {tab==='Risk & Monte Carlo'&&<MonteCarloView returns={returns}/>} {tab==='Data'&&<DataView returns={returns} onImport={setReturns}/>}</main>

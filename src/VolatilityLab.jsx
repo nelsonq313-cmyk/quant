@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import './volatility.css';
 import { Activity, Braces, Database, FileCode2, Folder, Play, RefreshCw, Search, Waves } from 'lucide-react';
 
 const DTE_BUCKETS = [7, 30, 60, 90];
