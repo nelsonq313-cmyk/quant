@@ -11,7 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Play, RotateCcw, Settings2 } from 'lucide-react';
+import { Play, Settings2 } from 'lucide-react';
 import { personalModel } from './personalDataset';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -22,9 +22,9 @@ const sd=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))};
 const money=n=>`${n<0?'-':''}$${Math.abs(n).toLocaleString(undefined,{maximumFractionDigits:0})}`;
 const percent=n=>`${n.toFixed(1)}%`;
 
-// The raw trade export does not contain each trade's planned stop distance, so raw
-// P&L divided by a median loss is NOT true R. Default calibration compresses the
-// extreme positive tail while leaving the eval loss library untouched.
+// Raw trade exports do not include planned stop distance, so P&L divided by a
+// median loss is not true R. The default compresses the extreme positive tail
+// while leaving the serious eval loss library untouched.
 const calibratedWins=personalModel.winR.map(r=>1.1*Math.log1p(Math.max(0,r)));
 const rawWins=personalModel.winR;
 
@@ -91,6 +91,7 @@ export default function MonteCarloResearch({propMode=false}){
   const riskScore=Math.round(clamp(result.ruinPct*2+result.maxDd/cfg.start*100,0,100));
   const ruinMed=median(result.timesToRuin),targetMed=median(result.timesToTarget);
   const ruinMean=mean(result.timesToRuin),targetMean=mean(result.timesToTarget);
+  const underwater=result.cross.length?result.cross.filter(x=>x<0).length/result.cross.length*100:0;
   const palette=['#1ec4dc','#23c88e','#3f77df','#d5b52d','#d86168'];
 
   return <div className="qmcPage">
@@ -107,14 +108,14 @@ export default function MonteCarloResearch({propMode=false}){
       <label>Calibration<select value={rawMode?'raw':'conservative'} onChange={e=>setRawMode(e.target.value==='raw')}><option value="conservative">Conservative tail-shrink</option><option value="raw">Raw empirical</option></select></label>
     </div>}
 
-    <div className="qmcModelNote"><b>PERSONAL MODEL</b><span>39.3% win · 53.6% loss · 7.1% breakeven · eval losses only · 11 eval + 28 vetted practice winners · tilt day excluded</span><em>{rawMode?'RAW PAYOFF TAIL':'CONSERVATIVE CALIBRATION'}</em></div>
+    <div className="qmcModelNote"><b>{propMode?'PROP FIRM · PERSONAL MODEL':'PERSONAL MODEL'}</b><span>39.3% win · 53.6% loss · 7.1% breakeven · eval losses only · 11 eval + 28 vetted practice winners · tilt day excluded</span><em>{rawMode?'RAW PAYOFF TAIL':'CONSERVATIVE CALIBRATION'}</em></div>
 
     <div className="qmcMetrics">
-      <Metric label="RISK SCORE" value={riskScore} sub={`0 low · 100 extreme`} />
+      <Metric label="RISK SCORE" value={riskScore} sub="0 low · 100 extreme" />
       <Metric label="P(RUIN)" value={percent(result.ruinPct)} sub={`Floor ${money(cfg.floor)}`} tone="bad"/>
       <Metric label="P(PROFIT)" value={percent(result.passPct)} sub="Terminal / first" tone="good"/>
       <Metric label="MEDIAN RETURN" value={percent(result.medReturn)} tone="good"/>
-      <Metric label="MC SHARPE" value={result.mcSharpe.toFixed(2)} sub={`Sample-aware`} />
+      <Metric label="MC SHARPE" value={result.mcSharpe.toFixed(2)} sub="Sample-aware" />
       <Metric label="MAX DRAWDOWN" value={money(result.maxDd)} sub={`${percent(result.maxDd/cfg.start*100)} · 95th`} tone="warn"/>
     </div>
 
@@ -127,7 +128,7 @@ export default function MonteCarloResearch({propMode=false}){
           {Array.from({length:Math.min(180,result.sims.length)},(_,i)=><Line key={i} dataKey={`p${i}`} dot={false} isAnimationActive={false} stroke={palette[i%palette.length]} strokeWidth={.55} opacity={.32}/>) }
         </LineChart></ResponsiveContainer>
         <div className="qmcCrossControl"><span>Cross-section at day {cfg.crossStep}/{cfg.steps}</span><input type="range" min="1" max={cfg.steps} value={cfg.crossStep} onChange={e=>set('crossStep',e.target.value)}/></div>
-        <div className="qmcCrossStats"><b>MEDIAN <i className={median(result.cross)>=0?'good':'bad'}>{median(result.cross)>=0?'+':''}{median(result.cross).toFixed(1)}%</i></b><span>P5 {pct(result.cross,.05).toFixed(1)}% → {pct(result.cross,.95).toFixed(1)}%</span><span>{result.cross.filter(x=>x<0).length/result.cross.length*100||0.toFixed?.(0)}% underwater</span></div>
+        <div className="qmcCrossStats"><b>MEDIAN <i className={median(result.cross)>=0?'good':'bad'}>{median(result.cross)>=0?'+':''}{median(result.cross).toFixed(1)}%</i></b><span>P5 {pct(result.cross,.05).toFixed(1)}% → {pct(result.cross,.95).toFixed(1)}%</span><span>{underwater.toFixed(0)}% underwater</span></div>
         <ResponsiveContainer width="100%" height={115}><BarChart data={crossData}><XAxis dataKey="x" stroke="#4c5158" tick={{fontSize:8}} tickFormatter={v=>`${v.toFixed(0)}%`}/><YAxis hide/><Bar dataKey="count" fill="#4659c8"/></BarChart></ResponsiveContainer>
       </section>
 
