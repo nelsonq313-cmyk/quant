@@ -148,6 +148,45 @@ function normalizeCandles(body) {
   return candles;
 }
 
+function normalizeNews(body) {
+  const length = Math.max(body.headline?.length || 0, body.source?.length || 0, body.publicationDate?.length || 0);
+  const articles = [];
+  for (let i = 0; i < length; i += 1) {
+    const headline = String(arrayAt(body, 'headline', i) || '').trim();
+    const source = String(arrayAt(body, 'source', i) || '').trim();
+    if (!headline) continue;
+    articles.push({
+      symbol: String(arrayAt(body, 'symbol', i) || '').toUpperCase(),
+      headline: headline.slice(0, 500),
+      source,
+      publicationDate: num(arrayAt(body, 'publicationDate', i)),
+    });
+  }
+  return articles;
+}
+
+function normalizeEarnings(body) {
+  const length = Math.max(body.reportDate?.length || 0, body.fiscalYear?.length || 0, body.reportedEPS?.length || 0);
+  const reports = [];
+  for (let i = 0; i < length; i += 1) {
+    reports.push({
+      symbol: String(arrayAt(body, 'symbol', i) || '').toUpperCase(),
+      fiscalYear: num(arrayAt(body, 'fiscalYear', i)),
+      fiscalQuarter: num(arrayAt(body, 'fiscalQuarter', i)),
+      date: num(arrayAt(body, 'date', i)),
+      reportDate: num(arrayAt(body, 'reportDate', i)),
+      reportTime: String(arrayAt(body, 'reportTime', i) || ''),
+      currency: String(arrayAt(body, 'currency', i) || ''),
+      reportedEPS: num(arrayAt(body, 'reportedEPS', i)),
+      estimatedEPS: num(arrayAt(body, 'estimatedEPS', i)),
+      surpriseEPS: num(arrayAt(body, 'surpriseEPS', i)),
+      surpriseEPSpct: num(arrayAt(body, 'surpriseEPSpct', i)),
+      updated: num(arrayAt(body, 'updated', i)),
+    });
+  }
+  return reports;
+}
+
 app.get('/api/status', (_req, res) => {
   res.json({
     server: { ok: true, now: new Date().toISOString(), cacheEntries: cache.size },
@@ -194,6 +233,38 @@ app.get('/api/market/candles', async (req, res) => {
     return res.json(saveCache(key, { symbol, source: 'MarketData.app stock candles', delayed: true, updated: new Date().toISOString(), candles }));
   } catch (error) {
     API_STATE.marketData.lastError = error instanceof Error ? error.message : 'Candle request failed';
+    return res.status(503).json({ error: API_STATE.marketData.lastError });
+  }
+});
+
+app.get('/api/market/news', async (req, res) => {
+  const symbol = cleanSymbol(req.query.symbol, 'AAPL');
+  const countback = Math.min(100, Math.max(1, Number(req.query.countback) || 20));
+  const key = `news:${symbol}:${countback}`;
+  const hit = cached(key, 5 * 60_000);
+  if (hit) return res.json(hit);
+  try {
+    const body = await marketData(`/v1/stocks/news/${encodeURIComponent(symbol)}/?countback=${countback}`);
+    const articles = normalizeNews(body);
+    return res.json(saveCache(key, { symbol, source: 'MarketData.app stock news beta', beta: true, updated: new Date().toISOString(), articles }));
+  } catch (error) {
+    API_STATE.marketData.lastError = error instanceof Error ? error.message : 'News request failed';
+    return res.status(503).json({ error: API_STATE.marketData.lastError, beta: true });
+  }
+});
+
+app.get('/api/market/earnings', async (req, res) => {
+  const symbol = cleanSymbol(req.query.symbol, 'AAPL');
+  const countback = Math.min(40, Math.max(1, Number(req.query.countback) || 12));
+  const key = `earnings:${symbol}:${countback}`;
+  const hit = cached(key, 30 * 60_000);
+  if (hit) return res.json(hit);
+  try {
+    const body = await marketData(`/v1/stocks/earnings/${encodeURIComponent(symbol)}/?countback=${countback}`);
+    const reports = normalizeEarnings(body);
+    return res.json(saveCache(key, { symbol, source: 'MarketData.app earnings', updated: new Date().toISOString(), reports }));
+  } catch (error) {
+    API_STATE.marketData.lastError = error instanceof Error ? error.message : 'Earnings request failed';
     return res.status(503).json({ error: API_STATE.marketData.lastError });
   }
 });
