@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
-import { Play, Settings2, X } from 'lucide-react';
+import { AlertTriangle, Play, Settings2, X } from 'lucide-react';
 import { personalModel } from './personalDataset';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
@@ -12,6 +12,7 @@ const sd=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))};
 const money=n=>`${n<0?'-':''}$${Math.abs(Number(n)||0).toLocaleString(undefined,{maximumFractionDigits:0})}`;
 const money1=n=>`${n<0?'-':''}$${(Math.abs(Number(n)||0)/1000).toFixed(1)}K`;
 const percent=n=>`${Number(n||0).toFixed(1)}%`;
+const rangePct=a=>a?.length===2?`${a[0].toFixed(1)}–${a[1].toFixed(1)}%`:'—';
 
 const conservativeWins=personalModel.winR.map(r=>1.1*Math.log1p(Math.max(0,r)));
 const rawWins=personalModel.winR;
@@ -21,10 +22,35 @@ function rng(seed){
   return ()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296};
 }
 
-function drawR(random,wins){
+function normal01(random){
+  const u1=Math.max(1e-12,random()),u2=Math.max(1e-12,random());
+  return Math.sqrt(-2*Math.log(u1))*Math.cos(2*Math.PI*u2);
+}
+
+function gammaSample(random,shape){
+  if(shape<=0)return 0;
+  if(shape<1)return gammaSample(random,shape+1)*Math.pow(Math.max(random(),1e-12),1/shape);
+  const d=shape-1/3,c=1/Math.sqrt(9*d);
+  for(let i=0;i<64;i++){
+    const x=normal01(random),v0=1+c*x;
+    if(v0<=0)continue;
+    const v=v0*v0*v0,u=random();
+    if(u<1-.0331*x*x*x*x)return d*v;
+    if(Math.log(Math.max(u,1e-12))<.5*x*x+d*(1-v+Math.log(v)))return d*v;
+  }
+  return shape;
+}
+
+function sampleProbabilities(random){
+  const aW=personalModel.evalWins+.5,aL=personalModel.evalLosses+.5,aB=personalModel.evalBreakevens+.5;
+  const w=gammaSample(random,aW),l=gammaSample(random,aL),b=gammaSample(random,aB),sum=w+l+b||1;
+  return {win:w/sum,loss:l/sum,breakeven:b/sum};
+}
+
+function drawR(random,wins,probs){
   const u=random();
-  if(u<personalModel.winProbability)return wins[Math.floor(random()*wins.length)]||0;
-  if(u<personalModel.winProbability+personalModel.lossProbability)return personalModel.lossR[Math.floor(random()*personalModel.lossR.length)]||0;
+  if(u<probs.win)return wins[Math.floor(random()*wins.length)]||0;
+  if(u<probs.win+probs.loss)return personalModel.lossR[Math.floor(random()*personalModel.lossR.length)]||0;
   return 0;
 }
 
@@ -39,15 +65,11 @@ function histogram(values,bins=24){
 function buildBands(paths,steps,start){
   const bands=[];
   for(let step=0;step<=steps;step++){
-    const values=new Array(paths.length);
-    let below=0;
-    for(let i=0;i<paths.length;i++){
-      const v=paths[i][step]; values[i]=v; if(v<start)below+=1;
-    }
+    const values=new Array(paths.length);let below=0;
+    for(let i=0;i<paths.length;i++){const v=paths[i][step];values[i]=v;if(v<start)below+=1}
     values.sort((a,b)=>a-b);
     bands.push({
-      step,
-      p05:quantileSorted(values,.05),p10:quantileSorted(values,.10),p25:quantileSorted(values,.25),
+      step,p05:quantileSorted(values,.05),p10:quantileSorted(values,.10),p25:quantileSorted(values,.25),
       p50:quantileSorted(values,.50),p75:quantileSorted(values,.75),p90:quantileSorted(values,.90),p95:quantileSorted(values,.95),
       belowPct:below/paths.length*100
     });
@@ -55,93 +77,155 @@ function buildBands(paths,steps,start){
   return bands;
 }
 
-function baseStats(paths,cfg,terminals,maxDds,losing,timesToFloor,timesToTarget,floorHits,targetHits,neither,profitCount){
-  const pnl=terminals.map(v=>v-cfg.start),terminalReturns=pnl.map(v=>v/cfg.start*100);
-  const downside=terminalReturns.filter(v=>v<0),downsideDev=Math.sqrt(mean(downside.map(v=>v*v)));
-  const bands=buildBands(paths,cfg.steps,cfg.start);
-  const lossBudget=Math.max(1,cfg.start-cfg.floor),p95Dd=quantile(maxDds,.95),ruinPct=floorHits/cfg.simulations*100;
-  const riskScore=clamp(Math.round(ruinPct*1.35+clamp(p95Dd/lossBudget,0,2)*22+clamp(quantile(losing,.95)/12,0,1)*18),0,100);
-  return {
-    paths,bands,terminals,pnl,terminalReturns,maxDds,losing,timesToFloor,timesToTarget,
-    ruinPct,targetPct:targetHits/cfg.simulations*100,neitherPct:neither/cfg.simulations*100,profitPct:profitCount/cfg.simulations*100,
-    meanPnl:mean(pnl),medianPnl:median(pnl),p5Pnl:quantile(pnl,.05),p95Pnl:quantile(pnl,.95),medianReturn:median(terminalReturns),
-    mcSharpe:sd(terminalReturns)?mean(terminalReturns)/sd(terminalReturns):0,sortino:downsideDev?mean(terminalReturns)/downsideDev:0,
-    p95Dd,medianDd:median(maxDds),p25Dd:quantile(maxDds,.25),p75Dd:quantile(maxDds,.75),p95Losing:quantile(losing,.95),riskScore
-  };
+function tradeRatios(moment){
+  const n=moment.n||1,avg=moment.sum/n,variance=Math.max(0,moment.sumSq/n-avg*avg),stdev=Math.sqrt(variance);
+  const downside=Math.sqrt(moment.downsideSq/n);
+  return {tradeSharpe:stdev?avg/stdev:0,sortino:downside?avg/downside:null};
+}
+
+function validateConfig(cfg,propMode=false){
+  const errors=[],warnings=[];
+  if(!(cfg.start>0))errors.push('Starting balance must be above $0.');
+  if(!(cfg.risk>0))errors.push('Risk per trade must be above $0.');
+  if(!(cfg.floor<cfg.start))errors.push('Ruin / drawdown floor must be below the starting balance.');
+  if(!(cfg.target>cfg.start))errors.push('Profit target must be above the starting balance.');
+  const riskPct=cfg.start>0?cfg.risk/cfg.start*100:0;
+  const budget=cfg.start-cfg.floor,budgetPct=budget>0?cfg.risk/budget*100:0;
+  if(riskPct>=10)warnings.push(`Risk / trade is ${riskPct.toFixed(1)}% of starting equity, so simulated outcomes can become extremely wide.`);
+  else if(riskPct>=5)warnings.push(`Risk / trade is ${riskPct.toFixed(1)}% of starting equity, which materially amplifies drawdowns and return dispersion.`);
+  if(budget>0&&budgetPct>=25)warnings.push(`One modeled 1R is ${budgetPct.toFixed(0)}% of the distance to the ruin floor.`);
+  if(!propMode&&cfg.steps>300)warnings.push('Long horizons magnify small model errors; read terminal returns as stress-test output, not a forecast.');
+  return {errors,warnings};
 }
 
 function simulate(cfg,rawMode=false,seed=1){
-  const wins=rawMode?rawWins:conservativeWins,random=rng(7331+seed*7919);
+  const wins=rawMode?rawWins:conservativeWins,random=rng(7331+seed*7919),blockSize=50;
   const paths=Array.from({length:cfg.simulations},()=>new Float32Array(cfg.steps+1));
-  const terminals=new Array(cfg.simulations),maxDds=new Array(cfg.simulations),losing=new Array(cfg.simulations),timesToFloor=[],timesToTarget=[];
-  let floorHits=0,targetHits=0,neither=0,profitCount=0;
+  const meta=new Array(cfg.simulations),strategyTerminals=new Array(cfg.simulations),accountTerminals=new Array(cfg.simulations);
+  const accountMaxDds=new Array(cfg.simulations),strategyMaxDds=new Array(cfg.simulations),losing=new Array(cfg.simulations);
+  const timesToFloor=[],timesToTarget=[],scenarioRuin=[],scenarioProfit=[],scenarioTarget=[],sampledWinRates=[];
+  const moment={n:0,sum:0,sumSq:0,downsideSq:0};
+  let floorHits=0,targetHits=0,neither=0,profitAndSurvive=0;
 
-  for(let s=0;s<cfg.simulations;s++){
-    let equity=cfg.start,peak=cfg.start,maxDd=0,lossStreak=0,maxLossStreak=0,firstBoundary=null;
-    paths[s][0]=equity;
-    for(let step=1;step<=cfg.steps;step++){
-      const r=drawR(random,wins);
-      equity+=r*cfg.risk;
-      paths[s][step]=equity;
-      if(r<0){lossStreak+=1;maxLossStreak=Math.max(maxLossStreak,lossStreak)}else if(r>0){lossStreak=0}
-      peak=Math.max(peak,equity);maxDd=Math.max(maxDd,peak-equity);
-      if(!firstBoundary&&equity<=cfg.floor){firstBoundary='floor';floorHits+=1;timesToFloor.push(step)}
-      else if(!firstBoundary&&equity>=cfg.target){firstBoundary='target';targetHits+=1;timesToTarget.push(step)}
-    }
-    if(!firstBoundary)neither+=1;
-    terminals[s]=equity;maxDds[s]=maxDd;losing[s]=maxLossStreak;if(equity>cfg.start)profitCount+=1;
-  }
-  return baseStats(paths,cfg,terminals,maxDds,losing,timesToFloor,timesToTarget,floorHits,targetHits,neither,profitCount);
-}
+  for(let base=0;base<cfg.simulations;base+=blockSize){
+    const probs=sampleProbabilities(random),end=Math.min(cfg.simulations,base+blockSize),n=end-base;
+    sampledWinRates.push(probs.win*100);
+    let localRuin=0,localProfit=0,localTarget=0;
 
-function simulateProp(cfg,rawMode=false,seed=1){
-  const wins=rawMode?rawWins:conservativeWins,random=rng(9817+seed*104729);
-  const paths=Array.from({length:cfg.simulations},()=>new Float32Array(cfg.steps+1));
-  const meta=new Array(cfg.simulations),terminals=new Array(cfg.simulations),maxDds=new Array(cfg.simulations),losing=new Array(cfg.simulations);
-  const timesToFloor=[],timesToTarget=[];
-  let passes=0,fails=0,timeouts=0,profitCount=0;
+    for(let s=base;s<end;s++){
+      let equity=cfg.start,accountEquity=cfg.start,peak=cfg.start,accountPeak=cfg.start;
+      let strategyMaxDd=0,accountMaxDd=0,lossStreak=0,maxLossStreak=0,ruinStep=null,targetStep=null;
+      paths[s][0]=equity;
 
-  for(let s=0;s<cfg.simulations;s++){
-    let equity=cfg.start,peak=cfg.start,maxDd=0,lossStreak=0,maxLossStreak=0,status='active',endStep=cfg.steps,reason='Time limit reached';
-    paths[s][0]=equity;
+      for(let step=1;step<=cfg.steps;step++){
+        const r=drawR(random,wins,probs),delta=r*cfg.risk,tradeRet=delta/cfg.start;
+        equity+=delta;paths[s][step]=equity;
+        moment.n+=1;moment.sum+=tradeRet;moment.sumSq+=tradeRet*tradeRet;if(tradeRet<0)moment.downsideSq+=tradeRet*tradeRet;
 
-    for(let step=1;step<=cfg.steps;step++){
-      const r=drawR(random,wins);
-      equity+=r*cfg.risk;
-      paths[s][step]=equity;
-      if(r<0){lossStreak+=1;maxLossStreak=Math.max(maxLossStreak,lossStreak)}else if(r>0){lossStreak=0}
-      peak=Math.max(peak,equity);maxDd=Math.max(maxDd,peak-equity);
+        if(r<0){lossStreak+=1;maxLossStreak=Math.max(maxLossStreak,lossStreak)}else if(r>0){lossStreak=0}
+        peak=Math.max(peak,equity);strategyMaxDd=Math.max(strategyMaxDd,peak-equity);
 
-      if(equity<=cfg.floor){
-        status='fail';endStep=step;reason='Drawdown limit breached';fails+=1;timesToFloor.push(step);break;
+        if(ruinStep==null){
+          accountEquity=equity;accountPeak=Math.max(accountPeak,accountEquity);accountMaxDd=Math.max(accountMaxDd,accountPeak-accountEquity);
+          if(accountEquity<=cfg.floor){ruinStep=step;floorHits+=1;localRuin+=1;timesToFloor.push(step)}
+          else if(targetStep==null&&accountEquity>=cfg.target){targetStep=step;targetHits+=1;localTarget+=1;timesToTarget.push(step)}
+        }
       }
-      if(equity>=cfg.target){
-        status='pass';endStep=step;reason='Profit target reached';passes+=1;timesToTarget.push(step);break;
+
+      if(ruinStep==null){
+        accountEquity=equity;
+        if(equity>cfg.start){profitAndSurvive+=1;localProfit+=1}
+      }else{
+        accountEquity=paths[s][ruinStep];
       }
+      if(ruinStep==null&&targetStep==null)neither+=1;
+
+      strategyTerminals[s]=equity;accountTerminals[s]=accountEquity;accountMaxDds[s]=accountMaxDd;strategyMaxDds[s]=strategyMaxDd;losing[s]=maxLossStreak;
+      meta[s]={
+        status:ruinStep!=null?'ruined':targetStep!=null?'target':'survived',
+        reason:ruinStep!=null?`Ruin floor crossed on trade ${ruinStep}`:targetStep!=null?`Target reached before ruin on trade ${targetStep}`:'Survived full horizon',
+        ruinStep,targetStep,finalStrategyEquity:equity,finalAccountEquity:accountEquity
+      };
     }
 
-    if(status==='active'){status='timeout';timeouts+=1;endStep=cfg.steps}
-    for(let step=endStep+1;step<=cfg.steps;step++)paths[s][step]=equity;
-    terminals[s]=equity;maxDds[s]=maxDd;losing[s]=maxLossStreak;if(equity>cfg.start)profitCount+=1;
-    meta[s]={status,endStep,reason,finalEquity:equity,netPnl:equity-cfg.start};
+    scenarioRuin.push(localRuin/n*100);scenarioProfit.push(localProfit/n*100);scenarioTarget.push(localTarget/n*100);
   }
 
-  const base=baseStats(paths,cfg,terminals,maxDds,losing,timesToFloor,timesToTarget,fails,passes,timeouts,profitCount);
-  const passPnls=meta.filter(m=>m.status==='pass').map(m=>m.netPnl);
+  const bands=buildBands(paths,cfg.steps,cfg.start),strategyPnl=strategyTerminals.map(v=>v-cfg.start),accountPnl=accountTerminals.map(v=>v-cfg.start);
+  const accountReturns=accountPnl.map(v=>v/cfg.start*100),p95Dd=quantile(accountMaxDds,.95),ruinPct=floorHits/cfg.simulations*100;
+  const p5AccountPnl=quantile(accountPnl,.05),tailLossFrac=Math.max(0,-p5AccountPnl)/cfg.start;
+  const riskIndex=clamp(Math.round(
+    45*Math.sqrt(ruinPct/100)+
+    35*clamp((p95Dd/cfg.start)/.5,0,1)+
+    20*clamp(tailLossFrac/.5,0,1)
+  ),0,100);
+  const ratios=tradeRatios(moment);
+
   return {
-    ...base,meta,
-    passPct:passes/cfg.simulations*100,
-    failPct:fails/cfg.simulations*100,
-    timeoutPct:timeouts/cfg.simulations*100,
-    avgPassDays:timesToTarget.length?mean(timesToTarget):0,
-    avgFailDays:timesToFloor.length?mean(timesToFloor):0,
-    meanPassPnl:passPnls.length?mean(passPnls):0
+    paths,meta,bands,
+    terminals:accountTerminals,strategyTerminals,accountPnl,strategyPnl,
+    terminalReturns:accountReturns,maxDds:accountMaxDds,strategyMaxDds,losing,timesToFloor,timesToTarget,
+    ruinPct,survivePct:100-ruinPct,profitPct:profitAndSurvive/cfg.simulations*100,
+    targetPct:targetHits/cfg.simulations*100,neitherPct:neither/cfg.simulations*100,
+    meanPnl:mean(accountPnl),medianPnl:median(accountPnl),p5Pnl:p5AccountPnl,p95Pnl:quantile(accountPnl,.95),
+    medianReturn:median(accountReturns),p95Dd,medianDd:median(accountMaxDds),p25Dd:quantile(accountMaxDds,.25),p75Dd:quantile(accountMaxDds,.75),
+    p95StrategyDd:quantile(strategyMaxDds,.95),p95Losing:quantile(losing,.95),riskScore:riskIndex,
+    tradeSharpe:ratios.tradeSharpe,sortino:ratios.sortino,
+    ruinCI:[quantile(scenarioRuin,.05),quantile(scenarioRuin,.95)],
+    profitCI:[quantile(scenarioProfit,.05),quantile(scenarioProfit,.95)],
+    targetCI:[quantile(scenarioTarget,.05),quantile(scenarioTarget,.95)],
+    modelWinCI:[quantile(sampledWinRates,.05),quantile(sampledWinRates,.95)]
   };
 }
 
-function Metric({label,value,sub,tone=''}) {
-  return <div className="qmcMetric"><span>{label}</span><b className={tone}>{value}</b>{sub&&<small>{sub}</small>}</div>;
+function simulateProp(cfg,rawMode=false,seed=1){
+  const wins=rawMode?rawWins:conservativeWins,random=rng(9817+seed*104729),blockSize=50;
+  const paths=Array.from({length:cfg.simulations},()=>new Float32Array(cfg.steps+1));
+  const meta=new Array(cfg.simulations),terminals=new Array(cfg.simulations),maxDds=new Array(cfg.simulations),losing=new Array(cfg.simulations);
+  const timesToFloor=[],timesToTarget=[],scenarioPass=[],scenarioFail=[],sampledWinRates=[];
+  let passes=0,fails=0,timeouts=0,profitCount=0;
+
+  for(let base=0;base<cfg.simulations;base+=blockSize){
+    const probs=sampleProbabilities(random),end=Math.min(cfg.simulations,base+blockSize),n=end-base;
+    sampledWinRates.push(probs.win*100);
+    let localPass=0,localFail=0;
+
+    for(let s=base;s<end;s++){
+      let equity=cfg.start,peak=cfg.start,maxDd=0,lossStreak=0,maxLossStreak=0,status='active',endStep=cfg.steps,reason='Time limit reached';
+      paths[s][0]=equity;
+
+      for(let step=1;step<=cfg.steps;step++){
+        const r=drawR(random,wins,probs);equity+=r*cfg.risk;paths[s][step]=equity;
+        if(r<0){lossStreak+=1;maxLossStreak=Math.max(maxLossStreak,lossStreak)}else if(r>0){lossStreak=0}
+        peak=Math.max(peak,equity);maxDd=Math.max(maxDd,peak-equity);
+
+        if(equity<=cfg.floor){status='fail';endStep=step;reason='Drawdown limit breached';fails+=1;localFail+=1;timesToFloor.push(step);break}
+        if(equity>=cfg.target){status='pass';endStep=step;reason='Profit target reached';passes+=1;localPass+=1;timesToTarget.push(step);break}
+      }
+
+      if(status==='active'){status='timeout';timeouts+=1;endStep=cfg.steps}
+      for(let step=endStep+1;step<=cfg.steps;step++)paths[s][step]=equity;
+      terminals[s]=equity;maxDds[s]=maxDd;losing[s]=maxLossStreak;if(equity>cfg.start)profitCount+=1;
+      meta[s]={status,endStep,reason,finalEquity:equity,netPnl:equity-cfg.start};
+    }
+
+    scenarioPass.push(localPass/n*100);scenarioFail.push(localFail/n*100);
+  }
+
+  const pnl=terminals.map(v=>v-cfg.start),terminalReturns=pnl.map(v=>v/cfg.start*100),bands=buildBands(paths,cfg.steps,cfg.start),passPnls=meta.filter(m=>m.status==='pass').map(m=>m.netPnl);
+  return {
+    paths,meta,bands,terminals,pnl,terminalReturns,maxDds,losing,timesToFloor,timesToTarget,
+    passPct:passes/cfg.simulations*100,failPct:fails/cfg.simulations*100,timeoutPct:timeouts/cfg.simulations*100,
+    ruinPct:fails/cfg.simulations*100,targetPct:passes/cfg.simulations*100,neitherPct:timeouts/cfg.simulations*100,profitPct:profitCount/cfg.simulations*100,
+    meanPnl:mean(pnl),medianPnl:median(pnl),p5Pnl:quantile(pnl,.05),p95Pnl:quantile(pnl,.95),medianReturn:median(terminalReturns),
+    p95Dd:quantile(maxDds,.95),p25Dd:quantile(maxDds,.25),p75Dd:quantile(maxDds,.75),p95Losing:quantile(losing,.95),
+    avgPassDays:timesToTarget.length?mean(timesToTarget):0,avgFailDays:timesToFloor.length?mean(timesToFloor):0,meanPassPnl:passPnls.length?mean(passPnls):0,
+    passCI:[quantile(scenarioPass,.05),quantile(scenarioPass,.95)],failCI:[quantile(scenarioFail,.05),quantile(scenarioFail,.95)],
+    modelWinCI:[quantile(sampledWinRates,.05),quantile(sampledWinRates,.95)]
+  };
 }
+
+function Metric({label,value,sub,tone=''}){return <div className="qmcMetric"><span>{label}</span><b className={tone}>{value}</b>{sub&&<small>{sub}</small>}</div>}
 
 function CanvasPaths({result,cfg,cursorStep,setCursorStep,mode='risk',onSelectPath}){
   const baseRef=useRef(null),overlayRef=useRef(null),scaleRef=useRef(null);
@@ -180,12 +264,10 @@ function CanvasPaths({result,cfg,cursorStep,setCursorStep,mode='risk',onSelectPa
     for(let p=0,draw=0;p<result.paths.length;p+=stride,draw++){
       drawIndices.push(p);
       const path=result.paths[p],meta=result.meta?.[p],end=mode==='prop'?(meta?.endStep??cfg.steps):cfg.steps;
-      if(mode==='prop'){
-        ctx.strokeStyle=meta?.status==='pass'?'rgba(42,212,161,.22)':meta?.status==='fail'?'rgba(239,102,112,.18)':'rgba(227,189,72,.18)';
-      } else ctx.strokeStyle=palette[draw%palette.length];
+      if(mode==='prop')ctx.strokeStyle=meta?.status==='pass'?'rgba(42,212,161,.22)':meta?.status==='fail'?'rgba(239,102,112,.18)':'rgba(227,189,72,.18)';
+      else ctx.strokeStyle=meta?.status==='ruined'?'rgba(239,102,112,.10)':palette[draw%palette.length];
       ctx.lineWidth=.55;ctx.beginPath();
-      for(let s=0;s<=end;s++){const x=xOf(s),y=yOf(path[s]);if(s===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
-      ctx.stroke();
+      for(let s=0;s<=end;s++){const x=xOf(s),y=yOf(path[s]);if(s===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
     }
 
     ctx.strokeStyle='rgba(202,196,255,.82)';ctx.lineWidth=1.35;ctx.beginPath();
@@ -205,12 +287,10 @@ function CanvasPaths({result,cfg,cursorStep,setCursorStep,mode='risk',onSelectPa
 
     if(hover.path!=null){
       const path=result.paths[hover.path],meta=result.meta?.[hover.path],end=mode==='prop'?(meta?.endStep??cfg.steps):cfg.steps;
-      ctx.strokeStyle=mode==='prop'?(meta?.status==='pass'?'#2ad4a1':meta?.status==='fail'?'#ef6670':'#e3bd48'):'#f2efff';
+      ctx.strokeStyle=mode==='prop'?(meta?.status==='pass'?'#2ad4a1':meta?.status==='fail'?'#ef6670':'#e3bd48'):(meta?.status==='ruined'?'#ef6670':'#f2efff');
       ctx.lineWidth=2;ctx.beginPath();
       for(let s=0;s<=end;s++){const x=scale.xOf(s),y=scale.yOf(path[s]);if(s===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.stroke();
-      if(step<=end){
-        ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(scale.xOf(step),scale.yOf(path[step]),3,0,Math.PI*2);ctx.fill();
-      }
+      if(step<=end){ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(scale.xOf(step),scale.yOf(path[step]),3,0,Math.PI*2);ctx.fill()}
     }
   },[hover,result,cfg,mode,cursorStep]);
 
@@ -225,12 +305,10 @@ function CanvasPaths({result,cfg,cursorStep,setCursorStep,mode='risk',onSelectPa
       const dy=Math.abs(scale.yOf(result.paths[p][step])-y);
       if(dy<best){best=dy;nearest=p}
     }
-    const path=best<=7?nearest:null;
-    setCursorStep(step);setHover({path,x:e.clientX-r.left,y,step});
+    setCursorStep(step);setHover({path:best<=7?nearest:null,x:e.clientX-r.left,y,step});
   };
 
-  const leave=()=>setHover(h=>({...h,path:null}));
-  const click=()=>{if(hover.path!=null&&onSelectPath)onSelectPath(hover.path)};
+  const leave=()=>setHover(h=>({...h,path:null})),click=()=>{if(hover.path!=null&&onSelectPath)onSelectPath(hover.path)};
   const b=result.bands[hover.step]||result.bands.at(-1),selected=hover.path!=null?result.paths[hover.path]:null,meta=hover.path!=null?result.meta?.[hover.path]:null;
   const boxLeft=clamp(hover.x+14,8,(scaleRef.current?.w||400)-205),boxTop=clamp(hover.y-58,8,(scaleRef.current?.h||300)-88);
 
@@ -239,12 +317,12 @@ function CanvasPaths({result,cfg,cursorStep,setCursorStep,mode='risk',onSelectPa
     <canvas ref={overlayRef} className="qmcCanvas qmcOverlayCanvas" onPointerMove={move} onPointerLeave={leave} onClick={click}/>
     <div className={`qmcCursorBox ${hover.path!=null?'pathHit':''}`} style={{left:boxLeft,top:boxTop,right:'auto'}}>
       {hover.path!=null?<>
-        <span>PATH #{hover.path+1} · DAY {hover.step}</span>
+        <span>PATH #{hover.path+1} · {mode==='prop'?'DAY':'TRADE'} {hover.step}</span>
         <b>{money1(selected[hover.step])}</b>
         <small>{meta?`${meta.status.toUpperCase()} · ${meta.reason}`:'simulation path'}</small>
-        <small>click path for full breakdown</small>
+        {mode==='prop'&&<small>click path for full breakdown</small>}
       </>:<>
-        <span>DAY {hover.step}</span>
+        <span>{mode==='prop'?'DAY':'TRADE'} {hover.step}</span>
         <b>{money1(b.p50)}</b>
         <small>p10 {money1(b.p10)} · p90 {money1(b.p90)}</small>
         <small>{b.belowPct.toFixed(0)}% below start · {(100-b.belowPct).toFixed(0)}% above</small>
@@ -266,15 +344,23 @@ function Settings({draft,setDraft,rawDraft,setRawDraft,propMode=false}){
     <label>Start<input value={draft.start} onChange={e=>set('start',e.target.value)}/></label>
     <label>Risk / trade<input value={draft.risk} onChange={e=>set('risk',e.target.value)}/></label>
     {propMode&&<><label>Profit target<input value={draft.target} onChange={e=>set('target',e.target.value)}/></label><label>Drawdown floor<input value={draft.floor} onChange={e=>set('floor',e.target.value)}/></label></>}
-    <label>Calibration<select value={rawDraft?'raw':'conservative'} onChange={e=>setRawDraft(e.target.value==='raw')}><option value="conservative">Conservative</option><option value="raw">Raw empirical</option></select></label>
+    <label>Calibration<select value={rawDraft?'raw':'conservative'} onChange={e=>setRawDraft(e.target.value==='raw')}><option value="conservative">Conservative + uncertainty</option><option value="raw">Raw empirical + uncertainty</option></select></label>
   </div>;
+}
+
+function ValidationBanner({validation}){
+  if(!validation.errors.length&&!validation.warnings.length)return null;
+  return <div className={`qmcValidation ${validation.errors.length?'error':'warn'}`}><AlertTriangle size={13}/><div>
+    {validation.errors.map(x=><b key={x}>{x}</b>)}
+    {validation.warnings.map(x=><span key={x}>{x}</span>)}
+  </div></div>;
 }
 
 function CrossSection({result,cfg,crossStep,setCrossStep}){
   const values=useMemo(()=>result.paths.map(p=>(p[crossStep]-cfg.start)/cfg.start*100),[result,cfg.start,crossStep]);
   const data=useMemo(()=>histogram(values,30),[values]),med=median(values),under=values.length?values.filter(x=>x<0).length/values.length*100:0;
   return <div className="qmcCrossSection">
-    <div className="qmcCrossHead"><span>Trading day <b>{crossStep}</b> / {cfg.steps}</span><span>Median {med>=0?'+':''}{med.toFixed(1)}%</span></div>
+    <div className="qmcCrossHead"><span>Trading step <b>{crossStep}</b> / {cfg.steps}</span><span>Median {med>=0?'+':''}{med.toFixed(1)}%</span></div>
     <input type="range" min="1" max={cfg.steps} value={crossStep} onChange={e=>setCrossStep(Number(e.target.value))}/>
     <div className="qmcCrossStats"><b>Median {med>=0?'+':''}{med.toFixed(1)}%</b><span>p5–p95 {quantile(values,.05).toFixed(1)}% to {quantile(values,.95).toFixed(1)}%</span><span>{under.toFixed(0)}% underwater</span></div>
     <ResponsiveContainer width="100%" height={78}><BarChart data={data}><XAxis dataKey="x" stroke="#4d535a" tick={{fontSize:7}} tickFormatter={v=>`${v.toFixed(0)}%`}/><YAxis hide/><Bar dataKey="count" fill="#765fce"/></BarChart></ResponsiveContainer>
@@ -282,21 +368,20 @@ function CrossSection({result,cfg,crossStep,setCrossStep}){
 }
 
 function OutcomeDonut({result}){
-  const pass=result.passPct,fail=result.failPct,timeout=result.timeoutPct;
-  const bg=`conic-gradient(#2ad4a1 0 ${pass}%, #ef6670 ${pass}% ${pass+fail}%, #e3bd48 ${pass+fail}% 100%)`;
+  const pass=result.passPct,fail=result.failPct,timeout=result.timeoutPct,bg=`conic-gradient(#2ad4a1 0 ${pass}%, #ef6670 ${pass}% ${pass+fail}%, #e3bd48 ${pass+fail}% 100%)`;
   return <div className="qmcOutcomeSummary">
     <div className="qmcDonutPanel">
       <div className="qmcDonutLabels">
         <div className="timeout"><b>Timeout: {percent(timeout)}</b></div>
-        <div className="pass"><b>Pass: {percent(pass)}</b><small>avg {result.avgPassDays?result.avgPassDays.toFixed(1):'—'} days</small></div>
-        <div className="fail"><b>Fail: {percent(fail)}</b><small>avg {result.avgFailDays?result.avgFailDays.toFixed(1):'—'} days</small></div>
+        <div className="pass"><b>Pass: {percent(pass)}</b><small>90% model range {rangePct(result.passCI)}</small></div>
+        <div className="fail"><b>Fail: {percent(fail)}</b><small>90% model range {rangePct(result.failCI)}</small></div>
       </div>
       <div className="qmcDonut" style={{background:bg}}><div><b>{result.paths.length.toLocaleString()}</b><span>sims</span></div></div>
     </div>
     <div className="qmcPropStatGrid">
       <Metric label="NET EV (MEAN)" value={money(result.meanPnl)} tone={result.meanPnl>=0?'good':'bad'}/>
-      <Metric label="PASS PROBABILITY" value={percent(result.passPct)} tone="good"/>
-      <Metric label="MEAN PASS P&L" value={money(result.meanPassPnl)} />
+      <Metric label="PASS PROBABILITY" value={percent(result.passPct)} sub={`90% range ${rangePct(result.passCI)}`} tone="good"/>
+      <Metric label="MEAN PASS P&L" value={money(result.meanPassPnl)}/>
       <Metric label="DAYS TO PASS" value={result.avgPassDays?`${result.avgPassDays.toFixed(1)} days`:'—'}/>
       <Metric label="NET EV, 5TH PCT" value={money(result.p5Pnl)} tone={result.p5Pnl<0?'bad':''}/>
       <Metric label="NET EV, 95TH PCT" value={money(result.p95Pnl)} tone="good"/>
@@ -307,10 +392,8 @@ function OutcomeDonut({result}){
 function PathDetail({index,result,cfg,onClose}){
   if(index==null)return null;
   const path=result.paths[index],meta=result.meta[index],end=meta.endStep,vals=Array.from(path.slice(0,end+1));
-  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
-  const pts=vals.map((v,i)=>`${(i/end)*100},${54-((v-min)/range)*48}`).join(' ');
-  const statusClass=meta.status==='pass'?'good':meta.status==='fail'?'bad':'warn';
-  const logs=[];
+  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1,pts=vals.map((v,i)=>`${(i/end)*100},${54-((v-min)/range)*48}`).join(' ');
+  const statusClass=meta.status==='pass'?'good':meta.status==='fail'?'bad':'warn',logs=[];
   for(let d=1;d<=end;d++)logs.push({day:d,ret:path[d]-path[d-1],balance:path[d]});
 
   return <div className="qmcPathDrawer">
@@ -326,23 +409,22 @@ function PathDetail({index,result,cfg,onClose}){
   </div>;
 }
 
-function PropView({active,draft,setDraft,result,run,settings,setSettings,rawDraft,setRawDraft,crossStep,setCrossStep,cursorStep,setCursorStep}){
+function PropView({active,draft,setDraft,result,run,settings,setSettings,rawDraft,setRawDraft,crossStep,setCrossStep,cursorStep,setCursorStep,validation}){
   const [phase,setPhase]=useState('Challenge'),[selectedPath,setSelectedPath]=useState(null);
   const changePhase=next=>{
-    const nextCfg=next==='Challenge'
-      ?{simulations:4000,steps:39,start:50000,risk:150,target:53000,floor:48000}
-      :{simulations:4000,steps:20,start:50000,risk:150,target:52500,floor:48000};
+    const nextCfg=next==='Challenge'?{simulations:4000,steps:39,start:50000,risk:150,target:53000,floor:48000}:{simulations:4000,steps:20,start:50000,risk:150,target:52500,floor:48000};
     setPhase(next);setDraft(nextCfg);run(nextCfg,rawDraft);setCrossStep(1);setSelectedPath(null);
   };
 
   return <div className="qmcPage qmcPropPage">
     <div className="qmcPropHeader">
-      <div><span>PROP FIRM</span><h1>50K challenge model</h1><p>Rule-based personal-model simulation with path-level inspection.</p></div>
-      <div className="qmcToolbarRight"><button onClick={()=>setSettings(v=>!v)}><Settings2 size={12}/> Settings</button><button className="qmcRun" onClick={()=>{run();setSelectedPath(null)}}><Play size={12}/> Run</button></div>
+      <div><span>PROP FIRM</span><h1>50K challenge model</h1><p>Rule-based simulation with posterior sample uncertainty and path-level inspection.</p></div>
+      <div className="qmcToolbarRight"><button onClick={()=>setSettings(v=>!v)}><Settings2 size={12}/> Settings</button><button className="qmcRun" disabled={validation.errors.length>0} onClick={()=>{run();setSelectedPath(null)}}><Play size={12}/> Run</button></div>
     </div>
     <div className="qmcPhaseTabs"><button className={phase==='Challenge'?'active':''} onClick={()=>changePhase('Challenge')}>Challenge</button><button className={phase==='Funded'?'active':''} onClick={()=>changePhase('Funded')}>Funded</button></div>
     {settings&&<Settings draft={draft} setDraft={setDraft} rawDraft={rawDraft} setRawDraft={setRawDraft} propMode/>}
-    <div className="qmcModelNote"><b>PERSONAL MODEL</b><span>{percent(personalModel.winProbability*100)} win · {percent(personalModel.lossProbability*100)} loss · {percent(personalModel.breakevenProbability*100)} breakeven · curated eval sample</span><em>{rawDraft?'RAW PAYOFF TAIL':'CONSERVATIVE CALIBRATION'}</em></div>
+    <ValidationBanner validation={validation}/>
+    <div className="qmcModelNote"><b>PERSONAL MODEL</b><span>{percent(personalModel.winProbability*100)} observed win · posterior 90% win range {rangePct(result.modelWinCI)} · {personalModel.evalPositionIdeas} curated eval ideas</span><em>{rawDraft?'RAW PAYOFF TAIL + UNCERTAINTY':'CONSERVATIVE + UNCERTAINTY'}</em></div>
     <OutcomeDonut result={result}/>
     <section className="qmcChartBlock">
       <div className="qmcChartHead"><div><b>{phase} equity paths</b><small>{active.simulations.toLocaleString()} simulations · hover a line to inspect · click for details</small></div><span>Median terminal {money(active.start+result.medianPnl)}</span></div>
@@ -356,42 +438,69 @@ function PropView({active,draft,setDraft,result,run,settings,setSettings,rawDraf
 export default function MonteCarloResearch({propMode=false}){
   const defaults=propMode?{simulations:4000,steps:39,start:50000,risk:150,target:53000,floor:48000}:{simulations:4000,steps:109,start:100000,risk:500,target:116165,floor:95000};
   const [active,setActive]=useState(defaults),[draft,setDraft]=useState(defaults),[rawMode,setRawMode]=useState(false),[rawDraft,setRawDraft]=useState(false),[seed,setSeed]=useState(1),[settings,setSettings]=useState(false),[section,setSection]=useState('Simulation'),[crossStep,setCrossStep]=useState(Math.min(44,defaults.steps)),[cursorStep,setCursorStep]=useState(defaults.steps);
-
+  const validation=useMemo(()=>validateConfig(draft,propMode),[draft,propMode]);
   const result=useMemo(()=>propMode?simulateProp(active,rawMode,seed):simulate(active,rawMode,seed),[active,rawMode,seed,propMode]);
+
   const run=(override=null,overrideRaw=null)=>{
-    const next=override||draft;
-    const safe={...next,simulations:clamp(Math.round(Number(next.simulations)||4000),100,10000),steps:clamp(Math.round(Number(next.steps)||39),5,500)};
+    const next=override||draft,safe={...next,simulations:clamp(Math.round(Number(next.simulations)||4000),100,10000),steps:clamp(Math.round(Number(next.steps)||39),5,500)};
+    const check=validateConfig(safe,propMode);if(check.errors.length)return;
     setActive(safe);setDraft(safe);setRawMode(overrideRaw??rawDraft);setCrossStep(v=>clamp(v,1,safe.steps));setCursorStep(safe.steps);setSeed(s=>s+1);
   };
 
-  if(propMode)return <PropView active={active} draft={draft} setDraft={setDraft} result={result} run={run} settings={settings} setSettings={setSettings} rawDraft={rawDraft} setRawDraft={setRawDraft} crossStep={crossStep} setCrossStep={setCrossStep} cursorStep={cursorStep} setCursorStep={setCursorStep}/>;
+  if(propMode)return <PropView active={active} draft={draft} setDraft={setDraft} result={result} run={run} settings={settings} setSettings={setSettings} rawDraft={rawDraft} setRawDraft={setRawDraft} crossStep={crossStep} setCrossStep={setCrossStep} cursorStep={cursorStep} setCursorStep={setCursorStep} validation={validation}/>;
 
-  const terminalData=histogram(result.pnl,28),ddData=histogram(result.maxDds,24);
+  const terminalData=histogram(result.accountPnl,28),ddData=histogram(result.maxDds,24);
   const setBoundary=(k,v)=>setDraft(c=>({...c,[k]:Number(v)}));
 
   return <div className="qmcPage">
-    <div className="qmcToolbar"><div className="qmcSectionTabs">{['Simulation','Outcome distributions','Tail risk'].map(t=><button key={t} className={section===t?'active':''} onClick={()=>setSection(t)}>{t}</button>)}</div><div className="qmcToolbarRight"><button onClick={()=>setSettings(v=>!v)}><Settings2 size={12}/> Simulation settings</button><button className="qmcRun" onClick={()=>run()}><Play size={12}/> Run</button></div></div>
+    <div className="qmcToolbar"><div className="qmcSectionTabs">{['Simulation','Outcome distributions','Tail risk'].map(t=><button key={t} className={section===t?'active':''} onClick={()=>setSection(t)}>{t}</button>)}</div><div className="qmcToolbarRight"><button onClick={()=>setSettings(v=>!v)}><Settings2 size={12}/> Simulation settings</button><button className="qmcRun" disabled={validation.errors.length>0} onClick={()=>run()}><Play size={12}/> Run</button></div></div>
     {settings&&<Settings draft={draft} setDraft={setDraft} rawDraft={rawDraft} setRawDraft={setRawDraft}/>} 
-    <div className="qmcModelNote"><b>PERSONAL MODEL</b><span>{percent(personalModel.winProbability*100)} win · {percent(personalModel.lossProbability*100)} loss · {percent(personalModel.breakevenProbability*100)} breakeven · curated eval probability model</span><em>{rawMode?'RAW PAYOFF TAIL':'CONSERVATIVE CALIBRATION'}</em></div>
-    <div className="qmcMetrics qmcMetrics7"><Metric label="RISK SCORE" value={result.riskScore} sub="0 low · 100 extreme"/><Metric label="P(RUIN)" value={percent(result.ruinPct)} sub={`Floor ${money1(active.floor)}`} tone="bad"/><Metric label="P(PROFIT)" value={percent(result.profitPct)} sub="Terminal > start" tone="good"/><Metric label="MEDIAN RETURN" value={percent(result.medianReturn)} tone={result.medianReturn>=0?'good':'bad'}/><Metric label="MC SHARPE" value={result.mcSharpe.toFixed(2)} sub={`Sortino ${result.sortino.toFixed(2)}`}/><Metric label="MAX DRAWDOWN" value={money1(result.p95Dd)} tone="warn" sub={`${money1(result.p25Dd)} – ${money1(result.p75Dd)} IQR`}/><Metric label="95% LOSING STREAK" value={`${Math.round(result.p95Losing)} trades`} tone="bad"/></div>
+    <ValidationBanner validation={validation}/>
+    <div className="qmcModelNote"><b>PERSONAL MODEL</b><span>{percent(personalModel.winProbability*100)} observed win · posterior 90% win range {rangePct(result.modelWinCI)} · {personalModel.evalPositionIdeas} curated eval ideas</span><em>{rawMode?'RAW PAYOFF TAIL + UNCERTAINTY':'CONSERVATIVE + UNCERTAINTY'}</em></div>
+
+    <div className="qmcMetrics qmcMetrics7">
+      <Metric label="RISK INDEX" value={result.riskScore} sub="model-aware · 0 low · 100 extreme"/>
+      <Metric label="P(RUIN)" value={percent(result.ruinPct)} sub={`90% range ${rangePct(result.ruinCI)}`} tone="bad"/>
+      <Metric label="P(PROFIT + SURVIVE)" value={percent(result.profitPct)} sub={`90% range ${rangePct(result.profitCI)}`} tone="good"/>
+      <Metric label="MEDIAN ACCOUNT RETURN" value={percent(result.medianReturn)} tone={result.medianReturn>=0?'good':'bad'}/>
+      <Metric label="TRADE SHARPE" value={result.tradeSharpe.toFixed(2)} sub={`Sortino ${result.sortino==null?'—':result.sortino.toFixed(2)}`}/>
+      <Metric label="P95 MAX DD" value={money1(result.p95Dd)} tone="warn" sub={`${money1(result.p25Dd)} – ${money1(result.p75Dd)} IQR`}/>
+      <Metric label="95% LOSING STREAK" value={`${Math.round(result.p95Losing)} trades`} tone="bad"/>
+    </div>
 
     {section==='Simulation'&&<>
       <section className="qmcChartBlock">
-        <div className="qmcChartHead"><div><b>Monte Carlo Equity Paths</b><small>{active.simulations.toLocaleString()} simulations · {active.steps} trades · hover a specific line for path data</small></div><span>Day {cursorStep} / {active.steps}</span></div>
+        <div className="qmcChartHead"><div><b>Monte Carlo Strategy Paths</b><small>{active.simulations.toLocaleString()} simulations · {active.steps} trades · ruined accounts are flagged but strategy paths continue for research</small></div><span>Trade {cursorStep} / {active.steps}</span></div>
         <CanvasPaths result={result} cfg={active} cursorStep={cursorStep} setCursorStep={setCursorStep}/>
         <CrossSection result={result} cfg={active} crossStep={crossStep} setCrossStep={setCrossStep}/>
       </section>
+
       <section className="qmcSolver">
-        <div className="qmcSolverHead"><b>Boundary & goal solver</b><button onClick={()=>run()}><Play size={11}/> Run solver</button></div>
-        <div className="qmcBoundaryInputs"><div><span className="ruinDot"/> RUIN FLOOR<label><input value={draft.floor} onChange={e=>setBoundary('floor',e.target.value)}/><small>{percent((draft.floor-draft.start)/draft.start*100)}</small></label><div className="chips">{[-1000,-2000,-3000,-5000].map(v=><button key={v} onClick={()=>setBoundary('floor',draft.start+v)}>{v}</button>)}</div></div><div><span className="targetDot"/> PROFIT TARGET<label><input value={draft.target} onChange={e=>setBoundary('target',e.target.value)}/><small>+{percent((draft.target-draft.start)/draft.start*100)}</small></label><div className="chips">{[2500,5000,10000,16165].map(v=><button key={v} onClick={()=>setBoundary('target',draft.start+v)}>+{v}</button>)}</div></div></div>
-        <div className="qmcRaceTitle"><span>Race to the boundary</span><small>{active.simulations.toLocaleString()} paths · first hit only</small></div>
+        <div className="qmcSolverHead"><b>Boundary & goal solver</b><button disabled={validation.errors.length>0} onClick={()=>run()}><Play size={11}/> Run solver</button></div>
+        <div className="qmcBoundaryInputs">
+          <div><span className="ruinDot"/> RUIN FLOOR<label><input value={draft.floor} onChange={e=>setBoundary('floor',e.target.value)}/><small>{percent((draft.floor-draft.start)/draft.start*100)}</small></label><div className="chips">{[-1000,-2000,-3000,-5000].map(v=><button key={v} onClick={()=>setBoundary('floor',draft.start+v)}>{v}</button>)}</div></div>
+          <div><span className="targetDot"/> PROFIT TARGET<label><input value={draft.target} onChange={e=>setBoundary('target',e.target.value)}/><small>+{percent((draft.target-draft.start)/draft.start*100)}</small></label><div className="chips">{[2500,5000,10000,16165].map(v=><button key={v} onClick={()=>setBoundary('target',draft.start+v)}>+{v}</button>)}</div></div>
+        </div>
+        <div className="qmcRaceTitle"><span>Race to the boundary</span><small>{active.simulations.toLocaleString()} paths · target must be reached before ruin</small></div>
         <div className="qmcRace"><span style={{width:`${result.ruinPct}%`}} className="ruinSeg">{Math.round(result.ruinPct)}%</span><span style={{width:`${result.neitherPct}%`}} className="neutralSeg">{Math.round(result.neitherPct)}%</span><span style={{width:`${result.targetPct}%`}} className="targetSeg">{Math.round(result.targetPct)}%</span></div>
-        <div className="qmcRaceLegend"><span className="bad">● Hit ruin {percent(result.ruinPct)}</span><span>● Neither {percent(result.neitherPct)}</span><span className="good">● Hit target {percent(result.targetPct)}</span></div>
-        <div className="qmcBoundaryCards"><article><div><span>RISK OF RUIN</span><b className="bad">{percent(result.ruinPct)}</b><small>{money(active.floor)}</small></div><p>First boundary touched was the loss floor.</p><div className="qmcTimes"><span>MEDIAN TIME<b>{result.timesToFloor.length?`${Math.round(median(result.timesToFloor))} trades`:'—'}</b></span><span>EXPECTED TIME<b>{result.timesToFloor.length?`${mean(result.timesToFloor).toFixed(1)} trades`:'—'}</b></span></div><MiniHistogram values={result.timesToFloor} tone="bad"/></article><article><div><span>REACHING TARGET</span><b className="good">{percent(result.targetPct)}</b><small>{money(active.target)}</small></div><p>First boundary touched was the profit target.</p><div className="qmcTimes"><span>MEDIAN TIME<b>{result.timesToTarget.length?`${Math.round(median(result.timesToTarget))} trades`:'—'}</b></span><span>EXPECTED TIME<b>{result.timesToTarget.length?`${mean(result.timesToTarget).toFixed(1)} trades`:'—'}</b></span></div><MiniHistogram values={result.timesToTarget} tone="green"/></article></div>
+        <div className="qmcRaceLegend"><span className="bad">● Hit ruin {percent(result.ruinPct)}</span><span>● Neither {percent(result.neitherPct)}</span><span className="good">● Target before ruin {percent(result.targetPct)}</span></div>
+        <div className="qmcBoundaryCards">
+          <article><div><span>RISK OF RUIN</span><b className="bad">{percent(result.ruinPct)}</b><small>{money(active.floor)}</small></div><p>Account is considered failed when this floor is crossed. Later strategy-path recovery does not undo ruin.</p><div className="qmcTimes"><span>MEDIAN TIME<b>{result.timesToFloor.length?`${Math.round(median(result.timesToFloor))} trades`:'—'}</b></span><span>90% MODEL RANGE<b>{rangePct(result.ruinCI)}</b></span></div><MiniHistogram values={result.timesToFloor} tone="bad"/></article>
+          <article><div><span>TARGET BEFORE RUIN</span><b className="good">{percent(result.targetPct)}</b><small>{money(active.target)}</small></div><p>Profit target must be touched while the account is still alive.</p><div className="qmcTimes"><span>MEDIAN TIME<b>{result.timesToTarget.length?`${Math.round(median(result.timesToTarget))} trades`:'—'}</b></span><span>90% MODEL RANGE<b>{rangePct(result.targetCI)}</b></span></div><MiniHistogram values={result.timesToTarget} tone="green"/></article>
+        </div>
       </section>
     </>}
 
-    {section==='Outcome distributions'&&<section className="qmcAltGrid"><article><h3>Terminal P&L distribution</h3><ResponsiveContainer width="100%" height={250}><BarChart data={terminalData}><XAxis dataKey="x" stroke="#4d535a" tick={{fontSize:8}} tickFormatter={v=>money1(v)}/><YAxis hide/><Bar dataKey="count" fill="#7861d0"/></BarChart></ResponsiveContainer></article><article><h3>Max drawdown distribution</h3><ResponsiveContainer width="100%" height={250}><BarChart data={ddData}><XAxis dataKey="x" stroke="#4d535a" tick={{fontSize:8}} tickFormatter={v=>money1(v)}/><YAxis hide/><Bar dataKey="count" fill="#d85b6b"/></BarChart></ResponsiveContainer></article></section>}
-    {section==='Tail risk'&&<section className="qmcTail"><Metric label="95% MAX DD" value={money(result.p95Dd)} tone="bad"/><Metric label="P(RUIN)" value={percent(result.ruinPct)} tone="bad"/><Metric label="P5 TERMINAL P&L" value={money(result.p5Pnl)} tone="bad"/><p>Boundary hits are recorded separately while every path continues through the full horizon, so later cross-sections and terminal statistics still include the complete simulation population.</p></section>}
+    {section==='Outcome distributions'&&<section className="qmcAltGrid">
+      <article><h3>Account terminal P&L distribution</h3><ResponsiveContainer width="100%" height={250}><BarChart data={terminalData}><XAxis dataKey="x" stroke="#4d535a" tick={{fontSize:8}} tickFormatter={v=>money1(v)}/><YAxis hide/><Bar dataKey="count" fill="#7861d0"/></BarChart></ResponsiveContainer></article>
+      <article><h3>Account max drawdown distribution</h3><ResponsiveContainer width="100%" height={250}><BarChart data={ddData}><XAxis dataKey="x" stroke="#4d535a" tick={{fontSize:8}} tickFormatter={v=>money1(v)}/><YAxis hide/><Bar dataKey="count" fill="#d85b6b"/></BarChart></ResponsiveContainer></article>
+    </section>}
+
+    {section==='Tail risk'&&<section className="qmcTail">
+      <Metric label="P95 ACCOUNT MAX DD" value={money(result.p95Dd)} tone="bad"/>
+      <Metric label="P(RUIN)" value={percent(result.ruinPct)} sub={`90% ${rangePct(result.ruinCI)}`} tone="bad"/>
+      <Metric label="P5 ACCOUNT P&L" value={money(result.p5Pnl)} tone={result.p5Pnl<0?'bad':''}/>
+      <p>Sample uncertainty is included by drawing a new win/loss/breakeven probability vector from a Dirichlet posterior around the {personalModel.evalPositionIdeas}-idea curated eval sample. Account statistics stop treating a ruined path as alive, while the strategy chart can continue that same path to study long-run behavior. Trade Sharpe and Sortino are calculated from simulated trade-level returns rather than terminal outcomes. P95 strategy-only max drawdown is {money(result.p95StrategyDd)}.</p>
+    </section>}
   </div>;
 }
