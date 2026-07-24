@@ -1,93 +1,19 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-
-function rotatePoint(p, yaw, pitch){
-  const cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pitch), sp=Math.sin(pitch);
-  const x1=p.x*cy-p.z*sy;
-  const z1=p.x*sy+p.z*cy;
-  const y1=p.y*cp-z1*sp;
-  const z2=p.y*sp+z1*cp;
-  return {x:x1,y:y1,z:z2};
-}
+function rotatePoint(p,yaw,pitch){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);const x1=p.x*cy-p.z*sy,z1=p.x*sy+p.z*cy,y1=p.y*cp-z1*sp,z2=p.y*sp+z1*cp;return{x:x1,y:y1,z:z2}}
+function plasma(t){const stops=[[55,20,95],[106,35,160],[189,54,161],[246,104,91],[253,185,65],[247,239,123]],x=clamp(t,0,1)*(stops.length-1),i=Math.min(stops.length-2,Math.floor(x)),f=x-i,a=stops[i],b=stops[i+1];return`rgb(${Math.round(a[0]+(b[0]-a[0])*f)},${Math.round(a[1]+(b[1]-a[1])*f)},${Math.round(a[2]+(b[2]-a[2])*f)})`}
 
 export default function InteractiveSurface3D({surface,moneynessLevels}){
-  const canvasRef=useRef(null);
-  const dragRef=useRef(null);
-  const [yaw,setYaw]=useState(-0.72);
-  const [pitch,setPitch]=useState(0.58);
-  const [zoom,setZoom]=useState(1);
-
-  const mesh=useMemo(()=>{
-    const rows=surface?.rows||[];
-    const vals=rows.flat().map(p=>Number(p.iv)||0).filter(v=>v>0);
-    const min=Math.min(...vals,0.15), max=Math.max(...vals,0.45), span=max-min||1;
-    const points=rows.map((row,xi)=>row.map((p,yi)=>({
-      x:(xi-(rows.length-1)/2)*1.25,
-      y:-((Number(p.iv)||min)-min)/span*2.35,
-      z:(yi-(row.length-1)/2)*0.72,
-      iv:Number(p.iv)||0,
-    })));
-    return {points,min,max};
-  },[surface]);
-
-  useEffect(()=>{
-    const canvas=canvasRef.current;
-    if(!canvas)return;
-    const ctx=canvas.getContext('2d');
-    const dpr=Math.min(window.devicePixelRatio||1,2);
-    const rect=canvas.getBoundingClientRect();
-    canvas.width=Math.max(1,Math.round(rect.width*dpr));
-    canvas.height=Math.max(1,Math.round(rect.height*dpr));
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-    const w=rect.width,h=rect.height;
-    ctx.clearRect(0,0,w,h);
-    ctx.fillStyle='#07080b';ctx.fillRect(0,0,w,h);
-
-    const project=(p)=>{
-      const r=rotatePoint(p,yaw,pitch);
-      const depth=8+r.z;
-      const scale=(135*zoom)/Math.max(3.8,depth);
-      return {x:w/2+r.x*scale,y:h/2+r.y*scale+18,z:r.z,scale};
-    };
-
-    ctx.strokeStyle='rgba(126,132,143,.14)';ctx.lineWidth=1;
-    for(let i=0;i<8;i++){
-      const y=h*.18+i*(h*.62/7);ctx.beginPath();ctx.moveTo(w*.08,y);ctx.lineTo(w*.94,y);ctx.stroke();
-    }
-
-    const faces=[];
-    for(let x=0;x<mesh.points.length-1;x++){
-      for(let z=0;z<(mesh.points[x]?.length||0)-1;z++){
-        const raw=[mesh.points[x][z],mesh.points[x+1][z],mesh.points[x+1][z+1],mesh.points[x][z+1]];
-        const pts=raw.map(project);
-        faces.push({pts,depth:pts.reduce((s,p)=>s+p.z,0)/4,iv:raw.reduce((s,p)=>s+p.iv,0)/4});
-      }
-    }
-    faces.sort((a,b)=>a.depth-b.depth);
-    for(const face of faces){
-      const t=clamp((face.iv-mesh.min)/(mesh.max-mesh.min||1),0,1);
-      const hue=275-t*70;
-      ctx.beginPath();ctx.moveTo(face.pts[0].x,face.pts[0].y);for(let i=1;i<face.pts.length;i++)ctx.lineTo(face.pts[i].x,face.pts[i].y);ctx.closePath();
-      ctx.fillStyle=`hsla(${hue},72%,${34+t*22}%,.78)`;ctx.fill();
-      ctx.strokeStyle='rgba(209,199,255,.23)';ctx.stroke();
-    }
-
-    ctx.fillStyle='#747a84';ctx.font='10px ui-monospace, monospace';
-    ctx.fillText('IV',14,19);ctx.fillText('DTE →',w-55,h-14);ctx.fillText('MONEYNESS',12,h-14);
-    ctx.fillStyle='#555b64';ctx.font='9px ui-monospace, monospace';
-    if(surface?.dtes?.length)ctx.fillText(`${surface.dtes[0]}d`,w*.60,h-32);
-    if(surface?.dtes?.length)ctx.fillText(`${surface.dtes.at(-1)}d`,w*.82,h-57);
-    if(moneynessLevels?.length){ctx.fillText(`${Math.round(moneynessLevels[0]*100)}%`,w*.10,h-44);ctx.fillText(`${Math.round(moneynessLevels.at(-1)*100)}%`,w*.25,h-86);}
+  const canvasRef=useRef(null),dragRef=useRef(null),projectedRef=useRef([]);const [yaw,setYaw]=useState(-.72),[pitch,setPitch]=useState(.58),[zoom,setZoom]=useState(1),[hover,setHover]=useState(null);
+  const mesh=useMemo(()=>{const rows=surface?.rows||[],vals=rows.flat().map(p=>Number(p.iv)||0).filter(v=>v>0),min=Math.min(...vals,.15),max=Math.max(...vals,.45),span=max-min||1;const points=rows.map((row,xi)=>row.map((p,zi)=>({x:(xi-(rows.length-1)/2)*1.32,y:-((Number(p.iv)||min)-min)/span*2.55,z:(zi-(row.length-1)/2)*.76,iv:Number(p.iv)||0,dte:p.dte,strike:p.strike,moneyness:p.moneyness})));return{points,min,max}},[surface]);
+  useEffect(()=>{const canvas=canvasRef.current;if(!canvas)return;const ctx=canvas.getContext('2d'),dpr=Math.min(window.devicePixelRatio||1,2),rect=canvas.getBoundingClientRect();canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,h=rect.height;ctx.clearRect(0,0,w,h);ctx.fillStyle='#050507';ctx.fillRect(0,0,w,h);
+    const project=p=>{const r=rotatePoint(p,yaw,pitch),depth=8+r.z,scale=(145*zoom)/Math.max(3.8,depth);return{x:w/2+r.x*scale,y:h/2+r.y*scale+16,z:r.z,scale}};
+    const gridBottom=h*.84;ctx.lineWidth=.7;ctx.strokeStyle='rgba(117,119,132,.13)';for(let i=0;i<10;i++){const y=h*.12+i*(gridBottom-h*.12)/9;ctx.beginPath();ctx.moveTo(w*.055,y);ctx.lineTo(w*.95,y);ctx.stroke()}for(let i=0;i<12;i++){const x=w*.055+i*(w*.895)/11;ctx.beginPath();ctx.moveTo(x,h*.12);ctx.lineTo(x,gridBottom);ctx.stroke()}
+    const faces=[],projected=[];for(let x=0;x<mesh.points.length;x++){projected[x]=[];for(let z=0;z<(mesh.points[x]?.length||0);z++){const q=project(mesh.points[x][z]);projected[x][z]={...q,...mesh.points[x][z]}}}for(let x=0;x<mesh.points.length-1;x++)for(let z=0;z<(mesh.points[x]?.length||0)-1;z++){const raw=[mesh.points[x][z],mesh.points[x+1][z],mesh.points[x+1][z+1],mesh.points[x][z+1]],pts=raw.map(project);faces.push({pts,depth:pts.reduce((s,p)=>s+p.z,0)/4,iv:raw.reduce((s,p)=>s+p.iv,0)/4})}faces.sort((a,b)=>a.depth-b.depth);for(const face of faces){const t=clamp((face.iv-mesh.min)/(mesh.max-mesh.min||1),0,1);ctx.beginPath();ctx.moveTo(face.pts[0].x,face.pts[0].y);for(let i=1;i<4;i++)ctx.lineTo(face.pts[i].x,face.pts[i].y);ctx.closePath();ctx.globalAlpha=.9;ctx.fillStyle=plasma(t);ctx.fill();ctx.globalAlpha=1;ctx.strokeStyle='rgba(255,255,255,.18)';ctx.lineWidth=.55;ctx.stroke()}
+    for(const row of projected)for(const p of row){ctx.fillStyle='rgba(255,255,255,.5)';ctx.beginPath();ctx.arc(p.x,p.y,1.1,0,Math.PI*2);ctx.fill()}projectedRef.current=projected.flat();
+    ctx.fillStyle='#8a8f99';ctx.font='9px ui-monospace,monospace';ctx.fillText('IV ↑',12,18);ctx.fillText('DTE →',w-55,h-13);ctx.fillText('MONEYNESS',12,h-13);if(surface?.dtes?.length){ctx.fillStyle='#5d626b';ctx.fillText(`${surface.dtes[0]}d`,w*.61,h-29);ctx.fillText(`${surface.dtes.at(-1)}d`,w*.82,h-51)}if(moneynessLevels?.length){ctx.fillText(`${Math.round(moneynessLevels[0]*100)}%`,w*.08,h-40);ctx.fillText(`${Math.round(moneynessLevels.at(-1)*100)}%`,w*.25,h-76)}
   },[mesh,yaw,pitch,zoom,surface,moneynessLevels]);
-
-  const down=(e)=>{dragRef.current={x:e.clientX,y:e.clientY,yaw,pitch};canvasRef.current?.setPointerCapture?.(e.pointerId)};
-  const move=(e)=>{if(!dragRef.current)return;const d=dragRef.current;setYaw(d.yaw+(e.clientX-d.x)*.008);setPitch(clamp(d.pitch+(e.clientY-d.y)*.008,-.15,1.15));};
-  const up=()=>{dragRef.current=null};
-  const wheel=(e)=>{e.preventDefault();setZoom(v=>clamp(v*(e.deltaY>0?.92:1.08),.65,1.8));};
-
-  return <div className="interactive3dWrap">
-    <canvas ref={canvasRef} className="interactive3d" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onWheel={wheel}/>
-    <div className="interactive3dHint">drag to rotate · wheel to zoom</div>
-  </div>;
+  const down=e=>{dragRef.current={x:e.clientX,y:e.clientY,yaw,pitch};canvasRef.current?.setPointerCapture?.(e.pointerId)};const move=e=>{if(dragRef.current){const d=dragRef.current;setYaw(d.yaw+(e.clientX-d.x)*.008);setPitch(clamp(d.pitch+(e.clientY-d.y)*.008,-.15,1.15));return}const r=e.currentTarget.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;let best=null,dist=Infinity;for(const p of projectedRef.current){const d=Math.hypot(p.x-x,p.y-y);if(d<dist){dist=d;best=p}}setHover(dist<=14?{...best,x:e.clientX-r.left,y:e.clientY-r.top}:null)};const up=()=>{dragRef.current=null};const wheel=e=>{e.preventDefault();setZoom(v=>clamp(v*(e.deltaY>0?.92:1.08),.62,2.05))};
+  return <div className="interactive3dWrap"><canvas ref={canvasRef} className="interactive3d" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={()=>{up();setHover(null)}} onWheel={wheel}/><div className="interactive3dLegend"><span>LOW</span><i/><span>HIGH</span></div><div className="interactive3dHint">drag rotate · wheel zoom · hover mesh</div>{hover&&<div className="interactive3dTooltip" style={{left:clamp(hover.x+12,8,500),top:clamp(hover.y-45,8,300)}}><b>{(hover.iv*100).toFixed(2)}% IV</b><span>{hover.dte} DTE · strike ${Number(hover.strike).toFixed(2)}</span><span>{hover.moneyness>=0?'+':''}{(hover.moneyness*100).toFixed(1)}% moneyness</span></div>}</div>;
 }
