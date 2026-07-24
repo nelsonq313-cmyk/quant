@@ -1,15 +1,17 @@
 {
   "name": "quant-terminal",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
+    "dev": "node server.mjs",
     "build": "vite build",
+    "start": "NODE_ENV=production node server.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
+    "express": "latest",
     "vite": "latest",
     "react": "latest",
     "react-dom": "latest",
