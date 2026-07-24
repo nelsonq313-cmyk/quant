@@ -15,4 +15,22 @@ jobs:
         with:
           node-version: 24
       - run: npm install --package-lock=false
-      - run: npm run build
+      - name: Build and capture log
+        shell: bash
+        run: |
+          set +e
+          npm run build > build.log 2>&1
+          code=$?
+          echo "$code" > build.exit
+          exit 0
+      - name: Upload build log
+        uses: actions/upload-artifact@v4
+        with:
+          name: qnt-build-log
+          path: |
+            build.log
+            build.exit
+          if-no-files-found: error
+      - name: Enforce build result
+        shell: bash
+        run: test "$(cat build.exit)" = "0"
