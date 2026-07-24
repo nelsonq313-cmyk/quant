@@ -1,3 +1,4 @@
+import http from 'node:http';
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'node:path';
@@ -163,17 +164,19 @@ app.get('/api/options-chain', async (req, res) => {
   }
 });
 
+const server = http.createServer(app);
+
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
   app.use((_req, res) => res.sendFile(path.join(__dirname, 'dist', 'index.html')));
 } else {
   const vite = await createViteServer({
-    server: { middlewareMode: true },
+    server: { middlewareMode: true, hmr: { server } },
     appType: 'spa',
   });
   app.use(vite.middlewares);
 }
 
-app.listen(port, '0.0.0.0', () => {
+server.listen(port, '0.0.0.0', () => {
   console.log(`QNT research terminal running on port ${port}`);
 });
