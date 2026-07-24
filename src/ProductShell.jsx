@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity, BookOpen, ChevronRight, Command, Database, FileCode2, Folder, FolderKanban,
-  Gauge, LayoutGrid, MessageSquareText, Plus, Search, Server, Star, WandSparkles, X,
+  Gauge, LayoutGrid, MessageSquareText, Plus, Search, Server, Star, WandSparkles,
 } from 'lucide-react';
 import App from './App.jsx';
 import MarketTerminal from './MarketTerminal.jsx';
@@ -38,9 +38,17 @@ const commandDefs=[
   ['MARKET','Market workstation','Quotes, price history, notes and provider health','shell','Market'],
   ['WORK','Research workspace','Editable quant research workspace + Copilot','research','Workspace'],
   ['API','API status','Provider configuration and recent request health','shell','API'],
+  ['QQQ','QQQ security','Open QQQ in the market workstation','symbol','QQQ'],
+  ['AAPL','AAPL security','Open AAPL in the market workstation','symbol','AAPL'],
+  ['SPY','SPY security','Open SPY in the market workstation','symbol','SPY'],
+  ['NQ','NQ futures','Open coverage status for direct NQ futures data','symbol','NQ'],
+  ['ES','ES futures','Open coverage status for direct ES futures data','symbol','ES'],
+  ['NEWS','News terminal','Show news-feed coverage status; never fabricate headlines','capability','NEWS'],
+  ['CALENDAR','Economic calendar','Show calendar-feed coverage status; never fabricate events','capability','CALENDAR'],
 ];
 
 const emitResearch=tab=>window.dispatchEvent(new CustomEvent('qnt:navigate',{detail:{type:'research',tab}}));
+const emitMarket=detail=>window.dispatchEvent(new CustomEvent('qnt:market-command',{detail}));
 
 function LeftRail({section,setSection}){
   const items=[['Projects',LayoutGrid],['Copilot',MessageSquareText],['Market',Gauge],['Library',BookOpen],['API',Server]];
@@ -68,8 +76,8 @@ function CopilotShell(){return <div className="qpsCopilotShell"><div className="
 function CommandPalette({open,onClose,setSection}){
   const [query,setQuery]=useState('');useEffect(()=>{if(open)setQuery('')},[open]);
   if(!open)return null;const q=query.trim().toUpperCase(),visible=commandDefs.filter(x=>`${x[0]} ${x[1]} ${x[2]}`.toUpperCase().includes(q));
-  const run=item=>{const [code,, ,type,target]=item;if(type==='shell')setSection(target);else{setSection('Copilot');emitResearch(target)};try{const prior=JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]');localStorage.setItem('qnt.recent.commands',JSON.stringify([code,...prior.filter(x=>x!==code)].slice(0,8)))}catch{}onClose()};
-  return <div className="qpsCommandBackdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Enter'&&visible[0])run(visible[0])}} placeholder="Type a function: MC, PROP, VOL, MARKET, DATA…"/><kbd>ESC</kbd></div><div className="qpsCommandList">{visible.map(item=><button key={item[0]} onClick={()=>run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">QNT command layer · navigation + research functions · market commands use connected data only</div></div></div>
+  const run=item=>{const [code,,,type,target]=item;if(type==='shell')setSection(target);else if(type==='research'){setSection('Copilot');emitResearch(target)}else{setSection('Market');try{sessionStorage.setItem('qnt.market.command',JSON.stringify({type,target}))}catch{}window.setTimeout(()=>emitMarket({type,target}),0)}try{const prior=JSON.parse(localStorage.getItem('qnt.recent.commands')||'[]');localStorage.setItem('qnt.recent.commands',JSON.stringify([code,...prior.filter(x=>x!==code)].slice(0,8)))}catch{}onClose()};
+  return <div className="qpsCommandBackdrop" onMouseDown={e=>e.target===e.currentTarget&&onClose()}><div className="qpsCommand"><div className="qpsCommandInput"><Command size={15}/><input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==='Escape')onClose();if(e.key==='Enter'&&visible[0])run(visible[0])}} placeholder="Type a function: MC, PROP, VOL, NQ, AAPL, NEWS…"/><kbd>ESC</kbd></div><div className="qpsCommandList">{visible.map(item=><button key={item[0]} onClick={()=>run(item)}><kbd>{item[0]}</kbd><div><b>{item[1]}</b><span>{item[2]}</span></div><ChevronRight size={13}/></button>)}</div><div className="qpsCommandFoot">QNT command layer · navigation + instrument lookup + coverage status · unavailable feeds stay explicitly unavailable</div></div></div>
 }
 
 export default function ProductShell(){
