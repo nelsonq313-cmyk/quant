@@ -18,7 +18,7 @@ const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 const mean=a=>a.reduce((s,v)=>s+v,0)/(a.length||1);
 const median=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y),m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2};
 const quantile=(a,p)=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor((s.length-1)*p))]};
-const sd=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2))};
+const sd=a=>{const m=mean(a);return Math.sqrt(mean(a.map(x=>(x-m)**2)))};
 const money=n=>`${n<0?'-':''}$${Math.abs(n).toLocaleString(undefined,{maximumFractionDigits:0})}`;
 const percent=n=>`${Number(n||0).toFixed(1)}%`;
 
