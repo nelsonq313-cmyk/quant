@@ -26,6 +26,7 @@ import'./terminal-market.css';
 import'./data-terminal.css';
 import'./functional.css';
 import'./responsive-overrides.css';
+import'./modern-ui.css';
 
 function Root(){
   const[mcMode,setMcMode]=useState(null);
