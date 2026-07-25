@@ -18,6 +18,7 @@ import'./terminal-workbench.css';
 import'./terminal-workbench-extra.css';
 import'./terminal-cohesion.css';
 import'./research-studio.css';
+import'./research-stats.css';
 import'./research-validation.css';
 import'./strategy-validation.css';
 import'./product-shell.css';
