@@ -1,0 +1,128 @@
+:root{
+  --qnt-bg:#090a0b;
+  --qnt-surface:#0f1113;
+  --qnt-surface-2:#131519;
+  --qnt-surface-3:#171a1f;
+  --qnt-border:#24282e;
+  --qnt-border-soft:#1b1f24;
+  --qnt-text:#f2f4f7;
+  --qnt-muted:#8a9099;
+  --qnt-dim:#5f6670;
+  --qnt-accent:#8b72ff;
+  --qnt-good:#55c69a;
+  --qnt-warn:#d4ad52;
+  --qnt-bad:#e56c76;
+}
+
+*{box-sizing:border-box}
+html,body,#root{background:var(--qnt-bg)!important;color:var(--qnt-text)!important}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;letter-spacing:0!important}
+button,input,textarea,select{font-family:inherit!important}
+button{transition:background .12s ease,border-color .12s ease,color .12s ease,opacity .12s ease}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:1px solid var(--qnt-accent)!important;outline-offset:1px}
+
+/* Shell */
+.productShell,.appShell,.qpCore,.qpsMain{background:var(--qnt-bg)!important}
+.qpsRail{width:58px!important;background:#0b0c0e!important;border-right:1px solid var(--qnt-border-soft)!important;padding:8px 6px!important}
+.qpsRailBrand{width:30px!important;height:30px!important;border-radius:7px!important;background:#15171b!important;border:1px solid var(--qnt-border)!important;color:#fff!important;font-size:13px!important;box-shadow:none!important}
+.qpsRailNav button,.qpsRailBottom button{width:44px!important;height:40px!important;border-radius:7px!important;border:1px solid transparent!important;color:#727984!important;background:transparent!important}
+.qpsRailNav button:hover,.qpsRailBottom button:hover{background:#131519!important;color:#c6cbd2!important}
+.qpsRailNav button.active{background:#17191d!important;border-color:#2b2f36!important;color:#fff!important;box-shadow:none!important}
+.qpsRailNav button.active svg{color:var(--qnt-accent)!important}
+.qpsRailNav button span{display:none!important}
+.qpsAvatar{background:#15171b!important;border:1px solid var(--qnt-border)!important;color:#c7ccd3!important;box-shadow:none!important}
+
+.qpsTopbar,.topNav{height:44px!important;background:#0b0c0e!important;border-bottom:1px solid var(--qnt-border-soft)!important;box-shadow:none!important;backdrop-filter:none!important}
+.qpsTopTitle{font-weight:600!important;color:#dfe3e8!important;font-size:12px!important}
+.qpsTopTitle svg{color:#808792!important}
+.qpsTopSearchButton,.qpsTopSearch{height:30px!important;max-width:520px!important;border:1px solid #2a2e34!important;background:#111316!important;border-radius:7px!important;box-shadow:none!important;color:#777e88!important}
+.qpsTopSearchButton:hover{border-color:#3a3f47!important;background:#14171a!important;color:#b9bec5!important}
+.qpsTopSearch kbd,.qpsCommand kbd{border:1px solid #30343a!important;background:#17191d!important;color:#777e87!important;border-radius:4px!important;box-shadow:none!important}
+.qpsActions,.rightNav{font-size:8px!important;letter-spacing:.08em!important;color:#707781!important}
+.qpsLive,.statusDot{width:6px!important;height:6px!important;background:var(--qnt-good)!important;box-shadow:none!important}
+
+/* Navigation */
+.topNav nav{gap:2px!important}
+.topNav nav button{height:44px!important;padding:0 11px!important;border:0!important;border-bottom:2px solid transparent!important;background:transparent!important;color:#747b85!important;font-size:9px!important;border-radius:0!important}
+.topNav nav button:hover{background:transparent!important;color:#b8bec6!important}
+.topNav nav button.active{background:transparent!important;color:#fff!important;border-bottom-color:var(--qnt-accent)!important}
+
+/* Pages and spacing */
+.qpsPage,.qpToolPage,.qvPage,.svPage{max-width:1440px!important;margin:0 auto!important;padding:28px 32px 56px!important;background:transparent!important}
+.qpsPageHead,.qpToolTitle,.qvTitle,.svTitle{border-bottom:1px solid var(--qnt-border-soft)!important;padding-bottom:18px!important;margin-bottom:20px!important}
+.qpsPageHead h1,.qpToolTitle h1,.qvTitle h1,.svTitle h1{font-size:22px!important;letter-spacing:-.025em!important;font-weight:600!important;margin:5px 0!important}
+.qpsPageHead p,.qpToolTitle p,.qvTitle p,.svTitle p{color:var(--qnt-muted)!important;font-size:10px!important;line-height:1.55!important}
+.qpsPageHead>div>span,.qpToolTitle>span,.qvTitle>span,.svTitle span:first-child{color:#6f7680!important;font-size:7px!important;letter-spacing:.12em!important;font-weight:600!important}
+
+/* Flat surfaces */
+.qpsProjectCard,.qpsLibraryCard,.qpsRecent,.qpsApiTable>div,.qpRegimeEmpty,.qpVerdictHero,.qpDataMetrics,.qtDatasetPanel,.qtSavedDatasets,
+.twPanel,.bdPanel,.atPanel,.svPanel,.qvHero,.qvMatrix article,.qrPanel,.qrReadiness article,.qrsPanel,.qrsArtifactPane,.qrsEditorPane,.qrsCopilotPane,
+.qpFiles,.qpEditor,.qpCopilot,.qpsCommand,.qmcPanel,.pmcPanel{
+  background:var(--qnt-surface)!important;
+  border-color:var(--qnt-border)!important;
+  box-shadow:none!important;
+  background-image:none!important;
+}
+.qpsProjectCard,.qpsLibraryCard,.twPanel,.bdPanel,.atPanel,.svPanel,.qvMatrix article,.qrPanel,.qrReadiness article,.qrsPanel{border-radius:8px!important}
+.qpsProjectCard:hover,.qpsLibraryCard:hover{background:var(--qnt-surface-2)!important;border-color:#343941!important;transform:none!important}
+
+/* Cards and metrics */
+.qpStat,.svCard,.qvStat,.twMetric,.bdMetric,.atMetric,.qrsMetric{background:transparent!important;border-color:var(--qnt-border-soft)!important}
+.qpStat span,.svCard span,.qvStat span,.twMetric span,.bdMetric span,.atMetric span{color:#707781!important;letter-spacing:.08em!important}
+.qpStat b,.svCard b,.qvStat b,.twMetric b,.bdMetric b,.atMetric b{color:#f1f3f5!important;font-weight:600!important}
+.good{color:var(--qnt-good)!important}.warn{color:var(--qnt-warn)!important}.bad{color:var(--qnt-bad)!important}.violet{color:var(--qnt-accent)!important}
+
+/* Buttons */
+.qpsPrimary,.svTitle button,.svActions button,.qrPanelHead button,.qrsRunButton,.qrsToolbar button,.qpEditorBar button,.qpComposer button,.qpsPage button:not(.qpsProjectCard):not(.qpsLibraryCard):not(.qpsRecentRow){
+  background:#17191d!important;color:#e6e9ed!important;border:1px solid #30343a!important;border-radius:6px!important;box-shadow:none!important;font-weight:500!important;
+}
+.qpsPrimary:hover,.svTitle button:hover,.svActions button:hover,.qrPanelHead button:hover,.qrsRunButton:hover,.qrsToolbar button:hover,.qpEditorBar button:hover,.qpComposer button:hover{background:#1c1f24!important;border-color:#41464f!important}
+
+/* Inputs */
+input,textarea,select,.qpsSearch,.qpsCommandInput,.qpComposer textarea,.qpCodeEditor{background:#0d0f11!important;border-color:#2a2e34!important;color:#e4e7eb!important;border-radius:6px!important;box-shadow:none!important}
+input::placeholder,textarea::placeholder{color:#565d66!important}
+
+/* Command palette */
+.qpsCommandBackdrop{background:rgba(0,0,0,.58)!important;backdrop-filter:blur(2px)!important}
+.qpsCommand{width:min(680px,92vw)!important;border-radius:10px!important;overflow:hidden!important}
+.qpsCommandList button{background:transparent!important;border-color:var(--qnt-border-soft)!important;color:#aab0b8!important}
+.qpsCommandList button:hover{background:#15171a!important;color:#fff!important}
+.qpsAskCommand{background:#121419!important}
+.qpsCommandFoot{background:#0d0f11!important;border-top:1px solid var(--qnt-border-soft)!important;color:#5f6670!important}
+
+/* Research workspace */
+.qpWorkspace,.qrsWorkspace{background:var(--qnt-bg)!important}
+.qpFiles,.qpEditor,.qpCopilot{border-right:1px solid var(--qnt-border-soft)!important}
+.qpPaneHead,.qpProjectName,.qpEditorTabs,.qpEditorBar,.qpCopilotHead,.qpComposer,.qpOutputHead{background:#0d0f11!important;border-color:var(--qnt-border-soft)!important}
+.qpFileList button.active{background:#16191d!important;border-left-color:var(--qnt-accent)!important;color:#fff!important}
+.qpUserBubble{background:#14171a!important;border:1px solid #292e34!important;border-radius:7px!important;color:#d6dae0!important}
+.qpAgentDot{background:var(--qnt-accent)!important;box-shadow:none!important}
+.qpAgentBlock p{color:#9aa0a9!important}
+.qpToolRow,.qpProposal{background:#111316!important;border-color:#292d33!important;border-radius:6px!important}
+
+/* Tables */
+.svTable,.qtPreviewTable,.qtSavedDatasets,.qrsArtifactTable,.qrFeatureTable{border-color:var(--qnt-border)!important;background:var(--qnt-surface)!important}
+.svTable>div,.qtPreviewRow,.qtSavedRow,.qrsArtifactTable>div,.qrFeatureTable>div{border-color:var(--qnt-border-soft)!important}
+.svTable .head,.qtPreviewRow.head,.qrsArtifactTable .head,.qrFeatureTable .head{background:#111316!important;color:#747b85!important}
+
+/* Validation */
+.svNav{background:#0d0f11!important;border:1px solid var(--qnt-border)!important;border-radius:8px!important;padding:4px!important;gap:3px!important}
+.svNav button{border:0!important;border-radius:5px!important;background:transparent!important;color:#707781!important}
+.svNav button.active{background:#1a1d22!important;color:#fff!important;box-shadow:none!important}
+.svNav button.active kbd{color:var(--qnt-accent)!important}
+.svNotice{border:1px solid #3b3526!important;background:#15130f!important;border-radius:7px!important;color:#a79b7b!important}
+.svReadiness>div{background:#111316!important;border-color:var(--qnt-border-soft)!important;border-radius:6px!important}
+
+/* Charts */
+.recharts-cartesian-grid line{stroke:#1c2025!important}
+.recharts-text{fill:#69717c!important}
+.recharts-tooltip-wrapper{filter:none!important}
+
+/* Remove visual-AI flourishes */
+[class*="Glow"],[class*="glow"],[class*="Gradient"],[class*="gradient"]{box-shadow:none!important;text-shadow:none!important}
+.qpsProjectIcon,.qpsLibTop svg,.qpsCardTop svg{background:transparent!important;box-shadow:none!important}
+.qpsProjectIcon{border:1px solid var(--qnt-border)!important;border-radius:6px!important}
+
+@media(max-width:1200px){
+  .qpsPage,.qpToolPage,.qvPage,.svPage{padding-left:20px!important;padding-right:20px!important}
+}
