@@ -27,6 +27,7 @@ import'./data-terminal.css';
 import'./functional.css';
 import'./responsive-overrides.css';
 import'./modern-ui.css';
+import'./ui-v3.css';
 
 function Root(){
   const[mcMode,setMcMode]=useState(null);
