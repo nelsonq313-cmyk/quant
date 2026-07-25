@@ -1,0 +1,225 @@
+:root{
+  --v3-bg:#0a0a0a;
+  --v3-sidebar:#0d0d0e;
+  --v3-panel:#101011;
+  --v3-panel-2:#131315;
+  --v3-panel-3:#171719;
+  --v3-line:#242426;
+  --v3-line-soft:#1a1a1c;
+  --v3-text:#f3f3f4;
+  --v3-muted:#95959d;
+  --v3-dim:#64646b;
+  --v3-accent:#8c7bff;
+  --v3-good:#63c49b;
+  --v3-warn:#d2aa62;
+  --v3-bad:#dc7078;
+}
+
+html,body,#root{background:var(--v3-bg)!important;color:var(--v3-text)!important}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;font-size:13px!important}
+*{scrollbar-color:#303035 transparent;scrollbar-width:thin}
+
+/* --- new application shell --- */
+.productShell{
+  display:grid!important;
+  grid-template-columns:188px minmax(0,1fr)!important;
+  min-height:100vh!important;
+  background:var(--v3-bg)!important;
+}
+.qpsRail{
+  width:auto!important;
+  height:100vh!important;
+  position:sticky!important;
+  top:0!important;
+  padding:14px 10px 12px!important;
+  align-items:stretch!important;
+  background:var(--v3-sidebar)!important;
+  border-right:1px solid var(--v3-line-soft)!important;
+  z-index:90!important;
+}
+.qpsRailBrand{
+  width:auto!important;
+  height:34px!important;
+  margin:0 6px 18px!important;
+  border:0!important;
+  background:transparent!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  color:var(--v3-text)!important;
+  font-size:0!important;
+  border-radius:0!important;
+}
+.qpsRailBrand::after{content:'QNT';font-size:15px;font-weight:720;letter-spacing:-.04em}
+.qpsRailNav{padding:0!important;gap:2px!important}
+.qpsRailNav button,.qpsRailBottom button{
+  width:100%!important;
+  height:34px!important;
+  padding:0 9px!important;
+  display:grid!important;
+  grid-template-columns:18px 1fr!important;
+  justify-content:initial!important;
+  align-items:center!important;
+  gap:8px!important;
+  border:0!important;
+  border-radius:6px!important;
+  background:transparent!important;
+  color:#7d7d84!important;
+  font-size:10px!important;
+  text-align:left!important;
+}
+.qpsRailNav button span{display:block!important;font-size:10px!important;font-weight:520!important}
+.qpsRailNav button:hover,.qpsRailBottom button:hover{background:#151517!important;color:#d1d1d5!important}
+.qpsRailNav button.active{background:#19191c!important;color:#f4f4f5!important;box-shadow:none!important}
+.qpsRailNav button.active svg{color:var(--v3-accent)!important}
+.qpsRailBottom{padding:0!important;gap:6px!important}
+.qpsRailBottom button{grid-template-columns:18px 1fr!important}
+.qpsRailBottom button::after{content:'Data';font-size:10px}
+.qpsAvatar{width:30px!important;height:30px!important;margin:6px 8px 0!important;border-radius:7px!important;background:#151517!important;border:1px solid var(--v3-line)!important;color:#aaaab0!important}
+
+.qpsMain{min-width:0!important;background:var(--v3-bg)!important}
+.qpsTopbar{
+  position:sticky!important;top:0!important;z-index:80!important;
+  height:48px!important;
+  display:grid!important;
+  grid-template-columns:minmax(140px,220px) minmax(300px,620px) 1fr!important;
+  gap:18px!important;
+  align-items:center!important;
+  padding:0 20px!important;
+  background:rgba(10,10,10,.96)!important;
+  border-bottom:1px solid var(--v3-line-soft)!important;
+  backdrop-filter:blur(14px)!important;
+}
+.qpsTopTitle{font-size:11px!important;font-weight:620!important;color:#d7d7db!important;gap:7px!important}
+.qpsTopTitle svg{display:none!important}
+.qpsTopSearchButton,.qpsTopSearch{
+  height:30px!important;
+  width:100%!important;
+  max-width:620px!important;
+  justify-self:center!important;
+  border:1px solid #29292d!important;
+  background:#111113!important;
+  border-radius:7px!important;
+  padding:0 10px!important;
+  color:#77777e!important;
+}
+.qpsTopSearchButton:hover{background:#151517!important;border-color:#343438!important;color:#a5a5ac!important}
+.qpsTopSearch kbd{margin-left:auto!important;background:#19191c!important;border:1px solid #303034!important;border-radius:4px!important;color:#77777e!important}
+.qpsActions{font-size:8px!important;letter-spacing:.08em!important;color:#66666d!important}
+.qpsActions>svg{display:none!important}
+.qpsLive,.statusDot{box-shadow:none!important;background:var(--v3-good)!important}
+
+/* --- page rhythm --- */
+.qpsPage,.qpToolPage,.qvPage,.svPage,.terminalHome,.twPage,.bdPage,.atPage{
+  max-width:none!important;
+  margin:0!important;
+  padding:24px 26px 54px!important;
+  background:var(--v3-bg)!important;
+}
+.qpsPageHead,.qpToolTitle,.qvTitle,.svTitle,.thHero{
+  margin:0 0 18px!important;
+  padding:0 0 16px!important;
+  border-bottom:1px solid var(--v3-line-soft)!important;
+}
+.qpsPageHead h1,.qpToolTitle h1,.qvTitle h1,.svTitle h1,.thHero h1{
+  margin:4px 0 5px!important;
+  font-size:20px!important;
+  line-height:1.2!important;
+  letter-spacing:-.035em!important;
+  font-weight:620!important;
+}
+.qpsPageHead p,.qpToolTitle p,.qvTitle p,.svTitle p,.thHero p{font-size:10px!important;line-height:1.5!important;color:var(--v3-muted)!important;max-width:720px!important}
+.qpsPageHead span,.qpToolTitle>span,.qvTitle>span,.svTitle>div>span,.thHero>div>span{font-size:7px!important;letter-spacing:.12em!important;color:#6b6b73!important;font-weight:650!important}
+
+/* --- research header becomes a quiet subnav --- */
+.productShell .appShell>.topNav{top:82px!important;height:38px!important;background:#0c0c0d!important;border-bottom:1px solid var(--v3-line-soft)!important;padding:0 16px!important}
+.topNav nav{gap:2px!important}
+.topNav nav button{height:38px!important;padding:0 10px!important;background:transparent!important;border:0!important;border-bottom:2px solid transparent!important;color:#74747b!important;font-size:9px!important;border-radius:0!important}
+.topNav nav button svg{display:none!important}
+.topNav nav button:hover{color:#b5b5ba!important;background:transparent!important}
+.topNav nav button.active{color:#f0f0f2!important;background:transparent!important;border-bottom-color:var(--v3-accent)!important}
+.rightNav{color:#626269!important;font-size:7px!important}
+.qpsWorkspaceStrip{height:34px!important;padding:0 18px!important;background:#0b0b0c!important;border-bottom:1px solid var(--v3-line-soft)!important;color:#6d6d74!important}
+
+/* --- home is now a clean console, not a dashboard collage --- */
+.thHero{display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:24px!important}
+.thHeroStatus{gap:6px!important}.thHeroStatus button{height:28px!important;border-radius:6px!important;background:#131315!important;border:1px solid #2c2c30!important;color:#a6a6ac!important}
+.thStatus{background:transparent!important;border:0!important;color:#77777e!important;padding:0 4px!important;font-size:7px!important}.thStatus i{box-shadow:none!important}
+.thCommandBar{height:42px!important;margin:0 0 14px!important;border:1px solid #29292d!important;border-radius:8px!important;background:#101011!important;box-shadow:none!important;overflow:hidden!important}
+.thCommandBar>svg{color:#68686f!important}.thCommandBar input{background:transparent!important;border:0!important;border-radius:0!important;font-size:10px!important}
+.thCommandBar button{height:100%!important;border:0!important;border-left:1px solid #242427!important;background:#141416!important;color:#a4a4aa!important;border-radius:0!important}
+.thCommandBar button svg{display:none!important}.thCommandBar button.secondary{background:#111113!important}
+.thNotice{border:1px solid #3a3225!important;background:#15120e!important;border-radius:7px!important;color:#a69a7c!important}
+.thTape{gap:0!important;border:1px solid var(--v3-line)!important;border-radius:8px!important;overflow:hidden!important;background:var(--v3-panel)!important}
+.thTape button{border:0!important;border-right:1px solid var(--v3-line-soft)!important;background:transparent!important;border-radius:0!important}.thTape button:last-child{border-right:0!important}.thTape button:hover{background:#151517!important}
+.thGrid{gap:10px!important;margin-top:10px!important}
+.thPanel,.twPanel,.bdPanel,.atPanel{background:var(--v3-panel)!important;border:1px solid var(--v3-line)!important;border-radius:8px!important;box-shadow:none!important;background-image:none!important}
+.thPanelHead,.twPanelHead,.bdPanelHead,.atPanelHead{background:transparent!important;border-bottom:1px solid var(--v3-line-soft)!important;min-height:38px!important}
+.thPanelHead b,.twPanelHead b,.bdPanelHead b,.atPanelHead b{font-size:8px!important;letter-spacing:.08em!important;font-weight:620!important}
+.thPanelHead svg,.twPanelHead svg,.bdPanelHead svg,.atPanelHead svg{color:#77777e!important}
+.thFunctionGrid{gap:0!important}.thFunctionGrid button{border:0!important;border-bottom:1px solid var(--v3-line-soft)!important;border-radius:0!important;background:transparent!important}.thFunctionGrid button:hover{background:#151517!important}.thFunctionGrid kbd{background:#171719!important;border:1px solid #2d2d31!important;color:#9f9fa6!important;border-radius:4px!important}
+.thResearchRows button,.thCoverageGrid>div,.thSystemGrid>div,.thRows>div{background:transparent!important;border-color:var(--v3-line-soft)!important}
+
+/* --- projects/library/API --- */
+.qpsProjectGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.qpsProjectCard,.qpsLibraryCard,.qpsRecent,.qpsApiTable>div{background:var(--v3-panel)!important;border:1px solid var(--v3-line)!important;border-radius:8px!important;box-shadow:none!important}
+.qpsProjectCard{padding:15px!important;min-height:132px!important}.qpsProjectCard:hover,.qpsLibraryCard:hover{background:var(--v3-panel-2)!important;border-color:#343438!important;transform:none!important}
+.qpsProjectIcon{width:28px!important;height:28px!important;border-radius:6px!important;background:#151517!important;border:1px solid #29292d!important;color:#94949b!important}
+.qpsProjectText{margin-top:12px!important}.qpsProjectText b{font-size:11px!important}.qpsProjectText p{font-size:9px!important;color:#85858c!important}
+.qpsCardFoot,.qpsLibFoot{border-color:var(--v3-line-soft)!important}
+.qpsLibraryTabs{gap:4px!important}.qpsLibraryTabs button{border:0!important;background:transparent!important;border-radius:6px!important;color:#77777e!important;padding:6px 9px!important}.qpsLibraryTabs button.active{background:#19191c!important;color:#f0f0f2!important}
+.qpsLibraryGrid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}.qpsLibraryCard{min-height:180px!important}
+.qpsRecentRow{height:42px!important}.qpsRecentRow:hover{background:#141416!important}
+
+/* --- controls --- */
+button{box-shadow:none!important}
+.qpsPrimary,.svTitle button,.svActions button,.svPythonButton,.qrPanelHead button,.qrsRunButton,.qrsToolbar button,.qpEditorBar button,.qpComposer button{
+  border:1px solid #2d2d31!important;background:#151517!important;color:#d7d7db!important;border-radius:6px!important;font-weight:540!important;
+}
+.qpsPrimary:hover,.svTitle button:hover,.svActions button:hover,.svPythonButton:hover,.qrPanelHead button:hover,.qrsRunButton:hover,.qrsToolbar button:hover,.qpEditorBar button:hover,.qpComposer button:hover{background:#1b1b1e!important;border-color:#3a3a40!important}
+input,textarea,select{background:#0f0f11!important;border-color:#29292d!important;color:#ececef!important;border-radius:6px!important;box-shadow:none!important}
+
+/* --- research workspace --- */
+.qpWorkspace,.qrsWorkspace{background:var(--v3-bg)!important}
+.qpFiles,.qpEditor,.qpCopilot,.qrsPanel,.qrsArtifactPane,.qrsEditorPane,.qrsCopilotPane{background:#0e0e10!important;border-color:var(--v3-line-soft)!important;box-shadow:none!important}
+.qpPaneHead,.qpProjectName,.qpEditorTabs,.qpEditorBar,.qpCopilotHead,.qpComposer,.qpOutputHead{background:#0c0c0d!important;border-color:var(--v3-line-soft)!important}
+.qpFileList button{border-radius:0!important}.qpFileList button.active{background:#161618!important;border-left-color:var(--v3-accent)!important;color:#eeeef0!important}
+.qpCode,.qpNotebookOutput{background:#0c0c0e!important}.qpUserBubble{background:#151517!important;border:1px solid #29292d!important;border-radius:7px!important;color:#dcdce0!important}
+.qpAgentDot{box-shadow:none!important;background:var(--v3-accent)!important}.qpAgentBlock p{color:#9a9aa1!important}.qpToolRow,.qpProposal{background:#121214!important;border-color:#29292d!important;border-radius:6px!important}
+.qrsSurfaceWrap,.interactive3dWrap{border-radius:7px!important;overflow:hidden!important}
+
+/* --- validation / verdict / regimes --- */
+.svNav{display:flex!important;gap:2px!important;padding:3px!important;border:1px solid var(--v3-line)!important;border-radius:7px!important;background:#0f0f11!important}
+.svNav button{border:0!important;border-radius:5px!important;background:transparent!important;color:#77777e!important}.svNav button.active{background:#1a1a1d!important;color:#f2f2f3!important}.svNav button.active kbd{color:var(--v3-accent)!important}
+.svPanel,.qvHero,.qvMatrix article,.qrPanel,.qrReadiness article,.svCard{background:var(--v3-panel)!important;border-color:var(--v3-line)!important;border-radius:8px!important;box-shadow:none!important}
+.svCards{border-color:var(--v3-line)!important;border-radius:8px!important;overflow:hidden!important}.svCard{border-radius:0!important}.svNotice{border-radius:7px!important;background:#15120e!important}.svReadiness>div,.svMethodList article{background:#121214!important;border-color:var(--v3-line-soft)!important;border-radius:6px!important}
+.svTable,.qrFeatureTable,.qtPreviewTable,.qrsArtifactTable{background:var(--v3-panel)!important;border-color:var(--v3-line)!important;border-radius:7px!important;overflow:hidden!important}.svTable .head,.qrFeatureTable .head,.qtPreviewRow.head,.qrsArtifactTable .head{background:#121214!important}
+
+/* --- command palette becomes a clean launcher --- */
+.qpsCommandBackdrop{background:rgba(0,0,0,.62)!important;backdrop-filter:blur(6px)!important}
+.qpsCommand{width:min(680px,92vw)!important;border:1px solid #303034!important;border-radius:10px!important;background:#101011!important;box-shadow:0 24px 80px rgba(0,0,0,.45)!important;overflow:hidden!important}
+.qpsCommandInput{height:46px!important;border:0!important;border-bottom:1px solid var(--v3-line)!important;background:#101011!important;border-radius:0!important}.qpsCommandInput input{background:transparent!important;border:0!important}
+.qpsCommandList button{min-height:48px!important;border:0!important;border-bottom:1px solid var(--v3-line-soft)!important;background:transparent!important;color:#b4b4ba!important}.qpsCommandList button:hover{background:#171719!important;color:#fff!important}.qpsCommandList kbd{border:1px solid #2e2e32!important;background:#171719!important;border-radius:4px!important;color:#8f8f96!important}.qpsAskCommand{background:#131315!important}.qpsCommandFoot{background:#0d0d0e!important;border-top:1px solid var(--v3-line-soft)!important;color:#5f5f66!important}
+
+/* --- monte carlo overlays must respect the new sidebar --- */
+.qmcOverlay{left:188px!important;top:86px!important;width:calc(100% - 188px)!important;height:calc(100vh - 86px)!important}
+
+/* --- remove remaining generative-design flourishes --- */
+[class*="Glow"],[class*="glow"],[class*="Gradient"],[class*="gradient"]{box-shadow:none!important;text-shadow:none!important;background-image:none!important}
+.qpsProjectCard::before,.qpsLibraryCard::before,.thPanel::before,.twPanel::before,.bdPanel::before,.atPanel::before{display:none!important}
+
+@media(max-width:1180px){
+  .productShell{grid-template-columns:154px minmax(0,1fr)!important}
+  .qmcOverlay{left:154px!important;width:calc(100% - 154px)!important}
+  .qpsTopbar{grid-template-columns:150px minmax(260px,1fr) auto!important}
+  .qpsLibraryGrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:900px){
+  .productShell{grid-template-columns:56px minmax(0,1fr)!important}
+  .qpsRail{padding:10px 6px!important}.qpsRailBrand{justify-content:center!important;margin:0 0 12px!important}.qpsRailBrand::after{content:'Q';font-size:14px}
+  .qpsRailNav button,.qpsRailBottom button{width:44px!important;grid-template-columns:1fr!important;justify-items:center!important;padding:0!important}.qpsRailNav button span,.qpsRailBottom button::after{display:none!important}.qpsAvatar{margin:6px auto 0!important}
+  .qmcOverlay{left:56px!important;width:calc(100% - 56px)!important}
+  .qpsTopbar{grid-template-columns:1fr auto!important;padding:0 14px!important}.qpsTopSearch{display:none!important}
+  .qpsProjectGrid,.qpsLibraryGrid{grid-template-columns:1fr!important}
+  .qpsPage,.qpToolPage,.qvPage,.svPage,.terminalHome,.twPage,.bdPage,.atPage{padding:18px 16px 42px!important}
+}
