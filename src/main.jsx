@@ -1,6 +1,6 @@
 import React,{useEffect,useState}from'react';
 import ReactDOM from'react-dom/client';
-import ProductShell from'./ProductShell.jsx';
+import QntRedesign from'./QntRedesign.jsx';
 import RiskMonteCarloV2 from'./RiskMonteCarloV2.jsx';
 import PropFirmV2 from'./PropFirmV2.jsx';
 import ModelStatsStrip from'./ModelStatsStrip.jsx';
@@ -28,11 +28,12 @@ import'./functional.css';
 import'./responsive-overrides.css';
 import'./modern-ui.css';
 import'./ui-v3.css';
+import'./qnt-v4.css';
 
 function Root(){
   const[mcMode,setMcMode]=useState(null);
   useEffect(()=>{const onNav=event=>{if(event.detail?.type!=='research')return;if(event.detail.tab==='Risk & Monte Carlo')setMcMode('risk');else if(event.detail.tab==='Prop Firm')setMcMode('prop');else setMcMode(null)};window.addEventListener('qnt:navigate',onNav);return()=>window.removeEventListener('qnt:navigate',onNav)},[]);
-  return <><ProductShell/>{mcMode&&<div className="qmcOverlay"><ModelStatsStrip/>{mcMode==='risk'?<RiskMonteCarloV2/>:<PropFirmV2/>}</div>}</>;
+  return <><QntRedesign/>{mcMode&&<div className="qmcOverlay"><ModelStatsStrip/>{mcMode==='risk'?<RiskMonteCarloV2/>:<PropFirmV2/>}</div>}</>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><Root/></React.StrictMode>);
