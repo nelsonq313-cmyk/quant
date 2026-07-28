@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useRef,useState}from'react';
 import{ArrowUpRight,ImagePlus,Loader2,Plus,Search,Sparkles,Trash2,Upload,Download,X}from'lucide-react';
 import{migratedJournalTrades,migratedNotes}from'./journalSeed.js';
 
-const DB='QNTJournalDB',STORE='trades',SEEDED='qnt.journal.migrated.v1';
+const DB='QNTJournalDB',STORE='trades',SEEDED='qnt.journal.migrated.v2';
 const emptyTrade=()=>{const d=new Date();return{id:null,createdAt:null,date:d.toISOString().slice(0,10),time:d.toTimeString().slice(0,5),instrument:'MNQ',direction:'',session:'NY AM',result:'',pnl:'',risk:'',rMultiple:'',concepts:'',notes:'',images:[],aiJournal:null}};
 const resultOf=t=>['win','loss','be'].includes(t?.result)?t.result:Number(t?.pnl)>0?'win':Number(t?.pnl)<0?'loss':'be';
 const asNum=v=>v===''||v==null?null:Number.isFinite(Number(v))?Number(v):null;
