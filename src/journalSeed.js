@@ -1,18 +1,72 @@
 export const migratedJournalTrades = [
   {
-    id:'hist-2026-07-28',createdAt:'2026-07-28T13:30:00.000Z',date:'2026-07-28',time:'09:30',instrument:'MNQ',direction:'short',session:'NY AM',grade:'',entryPrice:null,stopLoss:null,target:null,risk:null,pnl:390,rMultiple:null,result:'win',
-    htfNarrative:'The session opened with a bearish trend and a bearish E&R (expansion and retracement) developing inside the active range. Price had already swept liquidity and the range was positioned for downside delivery. London lows were the main draw and were also functioning as a failure-swing objective. The bearish idea was not based on win rate or a generic directional call; it came from the range structure, the liquidity sweep, and the expectation that the retracement would resolve back toward the downside draw.',
-    poi:'Top of the bearish retracement inside the range. The retracement was slightly aggressive but still fit the APD / HRL context. For the short entries, the important execution area was the 15-second CISD + OB structure near the top of the retracement, with stops positioned above the OB.',
-    liquidityEvent:'At the open, liquidity had been swept and bearish E&R was active inside the range. London lows were the downside target and ultimately behaved as a failure swing. After that failure swing, the directional idea flipped long. Later at NYO, the long thesis incorrectly assumed the relevant lows had already been cleared; internal liquidity remained to the left together with a higher-timeframe draw and HR imbalance.',
-    entryModel:'Primary short entry: 15-second CISD + OB + COS at the top of the retracement, with the stop above the OB. The first short delivered roughly +$170 toward London lows. After the London-low failure swing, the reversal long used the same core 15-second confirmation stack — CISD + OB + COS — with buyside as the draw. Later, after the NYO long loss, the bias was corrected back short and the same structure-based execution logic was used for the recovery shorts.',
-    executionNotes:'The first short produced about +$170. After the failure swing at London lows, the long reversal continued higher and brought the day to roughly +$300, although price first reacted from an OB/liquidity area before continuing through it. Around NYO, a long lost about $50. I treated the market-open low as the LOD because the premarket lows I had been tracking around 08:20 had already been taken, but I missed remaining internal liquidity to the left, the higher-timeframe draw, and the HR imbalance. I also believed the HTF gap had already been satisfied. Once that context error was recognized, I shifted back to a short bias, recovered the day to roughly +$340, then took another short that brought the session to about +$390.',
-    mistakes:'The main mistake was contextual rather than executional: I assumed downside liquidity had been fully cleared and treated the market-open low as the LOD without rechecking the internal liquidity and higher-timeframe draw to the left. The technical entry model itself was not the main problem. Before flipping directional bias, re-map all remaining internal liquidity, HTF imbalance, and unresolved draws instead of relying on the lows tracked earlier in premarket.',
-    concepts:['bearish trend','E&R','expansion','retracement','liquidity sweep','London lows','failure swing','APD','HRL','15-second','CISD','OB','COS','buyside','internal liquidity','HTF draw','HR imbalance','NYO'],images:[],
+    id:'hist-2026-07-28-short-1',createdAt:'2026-07-28T12:00:00.000Z',date:'2026-07-28',time:'',instrument:'MNQ',direction:'short',session:'Pre-market',grade:'',entryPrice:null,stopLoss:null,target:null,risk:null,pnl:170,rMultiple:null,result:'win',source:'Chat journal · July 28',
+    htfNarrative:'Bearish trend. E&R (expansion retracement) bearish within the range.',
+    poi:'The retracement was a bit aggressive but HRL, but it was APD.',
+    liquidityEvent:'For bearish downside we had swept liquidity. London lows were the target. London lows were a failure swing.',
+    entryModel:'15s CISD + OB + COS. Stops above the OB.',
+    executionNotes:'Short. +$170. Both of the premarket trades were off around 8:20 maybe.',
+    mistakes:'',
+    concepts:['bearish trend','E&R','expansion retracement','range','liquidity sweep','London lows','failure swing','HRL','APD','15s','CISD','OB','COS'],images:[],
     aiJournal:{
-      refinedJournal:'The session opened with a bearish trend and bearish E&R developing inside the active range. Liquidity had already been swept, leaving the range positioned for downside delivery into London lows, which were also the failure-swing objective. I entered near the top of the retracement using a 15-second CISD + OB + COS sequence, with the stop above the OB. The retracement was slightly aggressive but remained valid within the APD / HRL context. That first short delivered roughly +$170 into the downside draw.\n\nAfter London lows failure-swung, I shifted bullish. The reversal used the same core 15-second CISD + OB + COS entry model, this time with buyside as the draw. Price initially reacted from an OB/liquidity area but continued higher, and the sequence brought the day to roughly +$300.\n\nAround NYO I took a long that lost about $50. I had treated the market-open low as the LOD because the premarket lows I had tracked around 08:20 had already been taken. The mistake was that internal liquidity still remained to the left together with a higher-timeframe draw and HR imbalance. I also believed the HTF gap had already been satisfied. This was mainly a context-mapping error rather than a failure of the execution model.\n\nOnce I recognized the remaining downside context, I shifted back to a short bias. The next short recovered the session to roughly +$340, and another short brought the day to about +$390. The strongest part of the session was the consistency of the 15-second CISD + OB + COS execution model when it aligned with range E&R, liquidity, and the active draw. The main lesson is to re-map unresolved internal and HTF liquidity before declaring a low or high as the completed session extreme.',
-      thinkDeeper:['When a London-low failure swing causes a directional flip, what objective evidence confirms that the downside draw is actually complete rather than temporarily interrupted?','How often does the 15-second CISD + OB + COS model perform differently when the entry occurs at the top of an E&R retracement versus after a failure swing reversal?','Before labeling a market-open low as LOD, which unresolved internal-liquidity and HTF-imbalance checks should be mandatory?'],
-      improvement:'Before changing bias or declaring the session low/high complete, run one fixed context check: unresolved internal liquidity, HTF draw, and nearby HTF imbalance. Keep the 15-second CISD + OB + COS execution model separate from that directional-context decision.',
-      patternInsights:['The 15-second CISD + OB + COS sequence was repeatedly used across both continuation and reversal entries.','The best short context combined a bearish trend, range E&R, a prior liquidity sweep, and a defined downside draw into London lows.','The NYO loss came from an incomplete liquidity map rather than from abandoning the established entry model.']
+      refinedJournal:'Bearish trend. E&R (expansion retracement) bearish within the range. For bearish downside we had swept liquidity. London lows were the target, and London lows were a failure swing. The retracement was a bit aggressive but HRL, but it was APD. Entry was 15s CISD + OB + COS, with stops above the OB. +$170.',
+      thinkDeeper:[],improvement:'',patternInsights:[]
+    }
+  },
+  {
+    id:'hist-2026-07-28-long-1',createdAt:'2026-07-28T12:10:00.000Z',date:'2026-07-28',time:'',instrument:'MNQ',direction:'long',session:'Pre-market',grade:'',entryPrice:null,stopLoss:null,target:null,risk:null,pnl:null,rMultiple:null,result:'win',source:'Chat journal · July 28',
+    htfNarrative:'After the failure swing, longs.',
+    poi:'I had an OB and liquidity and it had a reaction, but it did keep going up higher.',
+    liquidityEvent:'This came after the failure swing. TP was buyside.',
+    entryModel:'Same entry: 15s CISD + OB + COS.',
+    executionNotes:'This brought the day to about +$300. Exact P&L for this individual trade was not supplied. Both of the premarket trades were off around 8:20 maybe.',
+    mistakes:'',
+    concepts:['failure swing','long','buyside','15s','CISD','OB','COS','liquidity'],images:[],
+    aiJournal:{
+      refinedJournal:'After the failure swing, longs. Same entry: 15s CISD + OB + COS. TP was buyside. I had an OB and liquidity and it had a reaction, but it did keep going up higher. That brought the day to about +$300.',
+      thinkDeeper:[],improvement:'',patternInsights:[]
+    }
+  },
+  {
+    id:'hist-2026-07-28-long-nyo',createdAt:'2026-07-28T13:30:00.000Z',date:'2026-07-28',time:'09:30',instrument:'MNQ',direction:'long',session:'NY AM',grade:'',entryPrice:null,stopLoss:null,target:null,risk:null,pnl:-50,rMultiple:null,result:'loss',source:'Chat journal · July 28',
+    htfNarrative:'At NYO I had a long bias. I thought we had a LOD from market open.',
+    poi:'I thought we hit the HTF gap too.',
+    liquidityEvent:'There was internal to the left and a HTF draw. I knew this because I had traded premarket; those two got off around 8:20 maybe, and I did not know the rest of what we did, so I thought we had taken all lows. Obviously we had the HR imbalance to the left on HTF.',
+    entryModel:'Long at NYO. No more entry-model detail was supplied for this trade.',
+    executionNotes:'Lost $50.',
+    mistakes:'It was just like a dummy moment, not much of a bad technical. I thought we had taken all lows, but there was still internal to the left, a HTF draw, and the HR imbalance to the left on HTF. I also thought we hit the HTF gap.',
+    concepts:['NYO','long bias','LOD','internal liquidity','HTF draw','HR imbalance','HTF gap'],images:[],
+    aiJournal:{
+      refinedJournal:'At NYO I had a long bias and lost $50. I thought we had a LOD from market open. I had traded premarket and those two trades got off around 8:20 maybe, so I thought we had taken all lows and I did not know the rest of what we did after that. There was still internal to the left and a HTF draw. Obviously we had the HR imbalance to the left on HTF. I also thought we hit the HTF gap. It was just like a dummy moment, not much of a bad technical.',
+      thinkDeeper:[],improvement:'',patternInsights:[]
+    }
+  },
+  {
+    id:'hist-2026-07-28-short-2',createdAt:'2026-07-28T13:40:00.000Z',date:'2026-07-28',time:'',instrument:'MNQ',direction:'short',session:'NY AM',grade:'',entryPrice:null,stopLoss:null,target:null,risk:null,pnl:null,rMultiple:null,result:'win',source:'Chat journal · July 28',
+    htfNarrative:'Then with a short bias I got back in.',
+    poi:'For the short entries it was an E&R of a range for bearish downside. We had swept liquidity.',
+    liquidityEvent:'Bearish downside after the liquidity sweep.',
+    entryModel:'Entry was like CISD + OB + COS. Stops above the OB.',
+    executionNotes:'This brought the day back to around +$340. Exact P&L for this individual trade was not supplied.',
+    mistakes:'',
+    concepts:['short bias','E&R','range','bearish downside','liquidity sweep','CISD','OB','COS'],images:[],
+    aiJournal:{
+      refinedJournal:'Then with a short bias I got back in. For the short entry it was an E&R of a range for bearish downside and we had swept liquidity. Entry was like CISD + OB + COS, with stops above the OB. That brought the day back to around +$340.',
+      thinkDeeper:[],improvement:'',patternInsights:[]
+    }
+  },
+  {
+    id:'hist-2026-07-28-short-3',createdAt:'2026-07-28T13:50:00.000Z',date:'2026-07-28',time:'',instrument:'MNQ',direction:'short',session:'NY AM',grade:'',entryPrice:null,stopLoss:null,target:null,risk:null,pnl:null,rMultiple:null,result:'win',source:'Chat journal · July 28',
+    htfNarrative:'Took another short with the short bias.',
+    poi:'For the short entries it was an E&R of a range for bearish downside. We had swept liquidity.',
+    liquidityEvent:'Bearish downside after the liquidity sweep.',
+    entryModel:'Entry was like CISD + OB + COS. Stops above the OB.',
+    executionNotes:'This brought the day to like +$390. Exact P&L for this individual trade was not supplied.',
+    mistakes:'',
+    concepts:['short bias','E&R','range','bearish downside','liquidity sweep','CISD','OB','COS'],images:[],
+    aiJournal:{
+      refinedJournal:'Took another short with the short bias. For the short entry it was an E&R of a range for bearish downside and we had swept liquidity. Entry was like CISD + OB + COS, with stops above the OB. That brought the day to like +$390.',
+      thinkDeeper:[],improvement:'',patternInsights:[]
     }
   },
   {
