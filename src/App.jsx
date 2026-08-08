@@ -3,13 +3,24 @@ import ResearchStudio from'./ResearchStudio.jsx';
 import{ResearchVerdict,RegimeLab}from'./ResearchValidation.jsx';
 import StrategyValidationLab from'./StrategyValidationLab.jsx';
 import VolatilityLab from'./VolatilityLab.jsx';
+import RiskMonteCarloV2 from'./RiskMonteCarloV2.jsx';
+import PropFirmV2 from'./PropFirmV2.jsx';
 
-const tabs=['Workspace','Validation','Verdict','Regimes','Volatility','Risk & Monte Carlo','Prop Firm'];
+const tabs=['Research Lab','Validation','Verdict','Regimes','Volatility','Risk & Monte Carlo','Prop Firm'];
+const aliases={'Workspace':'Research Lab'};
 const emitTab=tab=>window.dispatchEvent(new CustomEvent('qnt:navigate',{detail:{type:'research',tab}}));
 
 export default function App(){
-  const[tab,setTab]=useState('Workspace');
-  useEffect(()=>{const nav=e=>{if(e.detail?.type==='research'&&tabs.includes(e.detail.tab))setTab(e.detail.tab)};window.addEventListener('qnt:navigate',nav);return()=>window.removeEventListener('qnt:navigate',nav)},[]);
+  const[tab,setTab]=useState('Research Lab');
+  useEffect(()=>{const nav=e=>{if(e.detail?.type!=='research')return;const next=aliases[e.detail.tab]||e.detail.tab;if(tabs.includes(next))setTab(next)};window.addEventListener('qnt:navigate',nav);return()=>window.removeEventListener('qnt:navigate',nav)},[]);
   const select=name=>{setTab(name);emitTab(name)};
-  return <div className="appShell qpCore q4ResearchShell"><header className="topNav qpResearchNav"><nav>{tabs.map(name=><button key={name} className={tab===name?'active':''} onClick={()=>select(name)}>{name}</button>)}</nav><div className="rightNav"><span className="statusDot"/> PERSONAL MODEL</div></header><main>{tab==='Workspace'&&<ResearchStudio/>}{tab==='Validation'&&<StrategyValidationLab/>}{tab==='Verdict'&&<ResearchVerdict/>}{tab==='Regimes'&&<RegimeLab/>}{tab==='Volatility'&&<VolatilityLab/>}{(tab==='Prop Firm'||tab==='Risk & Monte Carlo')&&<div className="qpLoadingTool"><span>Opening simulation workspace…</span></div>}</main></div>;
+  return <div className="appShell qpCore q4ResearchShell"><header className="topNav qpResearchNav"><nav>{tabs.map(name=><button key={name} className={tab===name?'active':''} onClick={()=>select(name)}>{name}</button>)}</nav><div className="rightNav"><span className="statusDot"/> PERSONAL MODEL</div></header><main>
+    {tab==='Research Lab'&&<ResearchStudio/>}
+    {tab==='Validation'&&<StrategyValidationLab/>}
+    {tab==='Verdict'&&<ResearchVerdict/>}
+    {tab==='Regimes'&&<RegimeLab/>}
+    {tab==='Volatility'&&<VolatilityLab/>}
+    {tab==='Risk & Monte Carlo'&&<RiskMonteCarloV2/>}
+    {tab==='Prop Firm'&&<PropFirmV2/>}
+  </main></div>;
 }
