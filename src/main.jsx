@@ -28,5 +28,6 @@ import'./modern-ui.css';
 import'./ui-v3.css';
 import'./qnt-v4.css';
 import'./navigation-fixes.css';
+import'./research-layout-fixes.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><QntRedesign/></React.StrictMode>);
