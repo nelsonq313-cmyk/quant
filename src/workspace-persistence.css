@@ -1,0 +1,12 @@
+.qwsChatHistory{border-top:1px solid #1d2024;border-bottom:1px solid #1d2024;background:#08090a;max-height:210px;overflow:auto}
+.qwsChatHistoryHead{height:30px;display:flex;align-items:center;justify-content:space-between;padding:0 9px;color:#626971;font-size:7px;letter-spacing:.1em;font-weight:700;position:sticky;top:0;background:#08090a;z-index:2}
+.qwsChatHistoryHead button{width:22px;height:22px;border:0;background:transparent;color:#686f77;display:grid;place-items:center;cursor:pointer;border-radius:4px}
+.qwsChatHistoryHead button:hover{background:#14171a;color:#d5d9dd}.qwsChatHistoryHead button:disabled{opacity:.35;cursor:not-allowed}
+.qwsChatRow{min-height:30px;display:grid;grid-template-columns:minmax(0,1fr) 26px;align-items:center;border-top:1px solid #111418}.qwsChatRow.active{background:#111316}
+.qwsChatOpen{min-width:0;height:30px;border:0;background:transparent;color:#7d848c;display:grid;grid-template-columns:16px minmax(0,1fr) auto;align-items:center;gap:5px;padding:0 6px 0 9px;text-align:left;cursor:pointer}
+.qwsChatOpen:hover{background:#0e1012;color:#cfd3d8}.qwsChatOpen:disabled{cursor:not-allowed}.qwsChatRow.active .qwsChatOpen{color:#dfe2e5}
+.qwsChatOpen span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:8px}.qwsChatOpen small{font-size:6px;color:#555c64;text-transform:uppercase}
+.qwsChatDelete{width:22px;height:22px;border:0;background:transparent;color:#4f565e;display:grid;place-items:center;cursor:pointer;border-radius:4px}
+.qwsChatDelete:hover{background:#1b1114;color:#cf6b75}.qwsChatDelete:disabled{opacity:.3;cursor:not-allowed}
+.qwsExplorerFoot .qwsDataPoint{color:#736a96;border-top:1px solid #171a1e;padding-top:8px;margin-top:8px;letter-spacing:.02em}
+.qwsAgentHead button:disabled{opacity:.35;cursor:not-allowed}
