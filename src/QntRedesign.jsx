@@ -29,10 +29,12 @@ export default function QntRedesign(){
   const go=(next,tab)=>{setSection(next);if(next==='Research'&&tab)setTimeout(()=>emit('qnt:navigate',{type:'research',tab}),0)};
   const runCommand=raw=>{const fn=String(raw||'').trim().toUpperCase().split(/\s+/)[0];if(!fn)return;if(fn==='JOURNAL')go('Journal');else if(researchMap[fn])go('Research',researchMap[fn]);setCommandOpen(false)};
   useEffect(()=>{const key=e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();setCommandOpen(true)}if(e.key==='Escape')setCommandOpen(false)},route=e=>{const d=e.detail||{};if(d.section==='Research')go('Research',d.tab||'Research Lab')};window.addEventListener('keydown',key);window.addEventListener('qnt:route',route);return()=>{window.removeEventListener('keydown',key);window.removeEventListener('qnt:route',route)}},[]);
+  useEffect(()=>{if(section==='Research')setTimeout(()=>window.dispatchEvent(new Event('resize')),0)},[section]);
   const nav=[['Research',FlaskConical],['Journal',BookOpen]];
   return <div className="q4App"><aside className="q4Sidebar"><div className="q4Brand"><span>Q</span><div><b>QNT</b><small>research + journal</small></div></div><nav>{nav.map(([name,Icon])=><button key={name} className={section===name?'active':''} onClick={()=>go(name)}><Icon size={16}/><span>{name}</span></button>)}</nav><div className="q4SideFoot"><button onClick={()=>setCommandOpen(true)}><Command size={15}/><span>Commands</span><kbd>⌘K</kbd></button><div><i/><span>Local workspace</span></div></div></aside>
     <main className="q4Main"><header className="q4Top"><div className="q4Breadcrumb"><b>QNT</b><ChevronRight size={12}/><span>{section}</span></div><button className="q4GlobalSearch" onClick={()=>setCommandOpen(true)}><Search size={14}/><span>Search research tools or open journal…</span><kbd>⌘ K</kbd></button><div className="q4TopStatus"><i/><span>Research online</span></div></header>
       <div className="q4Content">
+        {/* Both panes stay mounted. Hiding Journal/Research never aborts an in-flight Copilot or Python request. */}
         <div className={`q4SectionPane ${section==='Research'?'active':''}`} aria-hidden={section!=='Research'}><div className="q4ToolFrame research"><App/></div></div>
         <div className={`q4SectionPane ${section==='Journal'?'active':''}`} aria-hidden={section!=='Journal'}><JournalWorkspace/></div>
       </div>
