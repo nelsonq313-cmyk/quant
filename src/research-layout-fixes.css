@@ -1,0 +1,35 @@
+/* Final layout authority for the simplified Research + Journal product. */
+.q4App{display:grid!important;grid-template-columns:206px minmax(0,1fr)!important;min-height:100vh!important;width:100%!important;overflow:hidden!important}
+.q4Sidebar{display:flex!important;grid-column:1!important;width:206px!important;min-width:206px!important;height:100vh!important;position:sticky!important;top:0!important}
+.q4Main{grid-column:2!important;min-width:0!important;width:100%!important;height:100vh!important;overflow:hidden!important}
+.q4Top{position:relative!important;top:auto!important;height:54px!important;margin:0!important}
+.q4Content{position:relative!important;height:calc(100vh - 54px)!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
+.q4SectionPane{width:100%!important;height:100%!important;min-height:0!important;margin:0!important;padding:0!important}
+.q4SectionPane:not(.active){display:none!important}
+.q4SectionPane.active{display:block!important}
+.q4ToolFrame.research{position:relative!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#0b0d10!important}
+.q4ToolFrame.research>.appShell,.q4ToolFrame.research .q4ResearchShell{position:relative!important;width:100%!important;height:100%!important;min-height:0!important;margin:0!important;padding:0!important;overflow:hidden!important;background:#0b0d10!important}
+
+/* Research navigation must live directly below the QNT top bar. Old terminal CSS used sticky offsets intended for a different shell. */
+.q4ToolFrame.research .appShell>.topNav,.q4ToolFrame.research .q4ResearchShell>.topNav{position:relative!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;height:44px!important;min-height:44px!important;margin:0!important;padding:0 18px!important;transform:none!important;z-index:20!important;background:#0d1014!important;border-top:0!important;border-bottom:1px solid #20252d!important}
+.q4ToolFrame.research .appShell>.topNav nav,.q4ToolFrame.research .q4ResearchShell>.topNav nav{height:44px!important;align-items:center!important}
+.q4ToolFrame.research .appShell>.topNav nav button,.q4ToolFrame.research .q4ResearchShell>.topNav nav button{height:30px!important;margin:0!important}
+.q4ToolFrame.research .appShell>main,.q4ToolFrame.research .q4ResearchShell>main{height:calc(100% - 44px)!important;min-height:0!important;margin:0!important;padding:0!important;overflow:auto!important}
+
+/* The Research Lab itself fills the available module area with no ghost spacer above it. */
+.q4ToolFrame.research .qwsStudio{height:100%!important;min-height:0!important;margin:0!important;border-top:0!important;overflow:hidden!important}
+
+/* Simulators are inline research modules, not viewport overlays. */
+.q4ToolFrame.research .qmcPage{position:relative!important;width:100%!important;max-width:none!important;min-height:100%!important;margin:0!important;padding:16px 24px 60px!important;inset:auto!important;z-index:auto!important;overflow:visible!important}
+.q4ToolFrame.research .qmcRiskV2,.q4ToolFrame.research .qmcPropPage{position:relative!important;inset:auto!important;width:100%!important;max-width:none!important;margin:0!important;z-index:auto!important}
+.q4ToolFrame.research .qmcOverlay{position:static!important;inset:auto!important;width:auto!important;height:auto!important;overflow:visible!important;background:transparent!important;z-index:auto!important}
+/* Path details belong to the simulator panel instead of pinning to the whole browser. */
+.q4ToolFrame.research .qmcPathDrawer{position:absolute!important;top:12px!important;right:12px!important;bottom:12px!important;z-index:50!important;max-height:calc(100% - 24px)!important}
+
+/* Journal owns the exact same content viewport. */
+.q4SectionPane.active>.q4Journal{height:100%!important;min-height:0!important}
+
+@media(max-width:1100px){
+  .q4App{grid-template-columns:168px minmax(0,1fr)!important}
+  .q4Sidebar{width:168px!important;min-width:168px!important}
+}
