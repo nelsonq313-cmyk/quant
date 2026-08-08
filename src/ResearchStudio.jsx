@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{Bar,BarChart,CartesianGrid,Line,LineChart,ResponsiveContainer,Scatter,ScatterChart,Tooltip,XAxis,YAxis,ZAxis}from'recharts';
-import{BarChart3,Box,ChevronDown,FileCode2,FileText,Globe2,LoaderCircle,Play,Plus,Send,TerminalSquare,Zap}from'lucide-react';
+import{BarChart3,Box,ChevronDown,FileCode2,FileText,Globe2,LoaderCircle,MessageSquareText,Play,Plus,Send,TerminalSquare,Trash2,Zap}from'lucide-react';
 import{personalModel}from'./personalDataset.js';
 import ResearchSurface3D from'./ResearchSurface3D.jsx';
 import ResearchStats,{calculateTradeStats}from'./ResearchStats.jsx';
@@ -22,6 +22,21 @@ const SKILLS=[
   {code:'/factor',label:'Factor study',prompt:'Design a provider-backed factor study using only data QNT actually has. Return a table of factor, formula, lookback, source and limitation.'}
 ];
 
+const WORKSPACE_DATA_KEY='qnt.workspace.data.v1';
+const welcomeMessage=text=>({role:'assistant',text:text||'Workspace ready. Ask me to edit, run, research, explain, or inspect your personal quant stats.',mode:'fast'});
+const chatId=()=>`CHAT-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+const chatTitle=messages=>{const first=(messages||[]).find(m=>m.role==='user'&&String(m.text||'').trim());return first?String(first.text).trim().replace(/\s+/g,' ').slice(0,38):'New research'};
+function defaultWorkspaceData(){const id=chatId(),now=new Date().toISOString();return{version:1,files:starterFiles(),activeFile:'edge_surface.py',prompt:'',currentChat:{id,createdAt:now,updatedAt:now,messages:[welcomeMessage()]},chats:[],artifacts:[],selectedArtifact:null,proposal:null,webEnabled:false,deepMode:false,runtimeMode:'fast',centerMode:'code'}}
+function loadWorkspaceData(){
+  const base=defaultWorkspaceData();
+  try{
+    const saved=JSON.parse(localStorage.getItem(WORKSPACE_DATA_KEY)||'null');
+    if(saved&&typeof saved==='object')return{...base,...saved,files:{...starterFiles(),...(saved.files||{})},artifacts:Array.isArray(saved.artifacts)?saved.artifacts:[],chats:Array.isArray(saved.chats)?saved.chats:[],currentChat:saved.currentChat?.id&&Array.isArray(saved.currentChat?.messages)?saved.currentChat:base.currentChat};
+    const legacyFiles=JSON.parse(localStorage.getItem('qnt.workspace.files')||'{}'),legacyArtifacts=JSON.parse(localStorage.getItem('qnt.research.artifacts')||'[]');
+    return{...base,files:{...starterFiles(),...(legacyFiles||{})},artifacts:Array.isArray(legacyArtifacts)?legacyArtifacts:[]};
+  }catch{return base}
+}
+
 function inlineParts(text){return String(text).split(/(\*\*[^*]+\*\*|`[^`]+`)/g).filter(Boolean).map((part,i)=>part.startsWith('**')&&part.endsWith('**')?<strong key={i}>{part.slice(2,-2)}</strong>:part.startsWith('`')&&part.endsWith('`')?<code key={i}>{part.slice(1,-1)}</code>:<React.Fragment key={i}>{part}</React.Fragment>)}
 function RichText({text}){const lines=String(text||'').replace(/\\\((.*?)\\\)/g,'$1').replace(/\\\[(.*?)\\\]/g,'$1').split('\n');return <div className="qwsRich">{lines.map((line,i)=>{const s=line.trim();if(!s)return <div className="qwsGap" key={i}/>;if(/^#{1,3}\s/.test(s))return <h4 key={i}>{inlineParts(s.replace(/^#{1,3}\s/,''))}</h4>;if(/^[-*]\s+/.test(s))return <div className="qwsBullet" key={i}><span>•</span><p>{inlineParts(s.replace(/^[-*]\s+/,''))}</p></div>;return <p key={i}>{inlineParts(s)}</p>})}</div>}
 function parseAgentText(text){let code=null;const artifacts=[];let display=String(text||'');display=display.replace(/<qnt_code>([\s\S]*?)<\/qnt_code>/gi,(_,raw)=>{code=raw.replace(/^\n|\n$/g,'');return''});display=display.replace(/<qnt_artifact>([\s\S]*?)<\/qnt_artifact>/gi,(_,raw)=>{try{const a=JSON.parse(raw);if(a&&typeof a==='object')artifacts.push(a)}catch{}return''});return{display:display.trim(),code,artifacts}}
@@ -33,15 +48,23 @@ function FileIcon({name}){return name.endsWith('.md')?<FileText size={13}/>:<Fil
 function ActivityRow({icon:Icon,label,detail,state='done'}){return <div className={`qwsActivity ${state}`}><Icon size={13}/><div><b>{label}</b>{detail&&<span>{detail}</span>}</div><em>{state==='active'?<LoaderCircle size={12}/>:state==='done'?'✓':'·'}</em></div>}
 
 export default function ResearchStudio(){
-  const[files,setFiles]=useState(()=>{try{return{...starterFiles(),...JSON.parse(localStorage.getItem('qnt.workspace.files')||'{}')}}catch{return starterFiles()}}),[activeFile,setActiveFile]=useState('edge_surface.py'),[prompt,setPrompt]=useState(''),[messages,setMessages]=useState([{role:'assistant',text:'Workspace ready. Ask me to edit, run, research, explain, or inspect your personal quant stats.',mode:'fast'}]);
-  const[artifacts,setArtifacts]=useState(()=>{try{return JSON.parse(localStorage.getItem('qnt.research.artifacts')||'[]')}catch{return[]}}),[selectedArtifact,setSelectedArtifact]=useState(null),[loading,setLoading]=useState(false),[proposal,setProposal]=useState(null),[webEnabled,setWebEnabled]=useState(false),[deepMode,setDeepMode]=useState(false),[runtimeMode,setRuntimeMode]=useState('fast'),[firstTokenMs,setFirstTokenMs]=useState(null),[centerMode,setCenterMode]=useState('code'),[runState,setRunState]=useState(null),[skillsOpen,setSkillsOpen]=useState(false);
-  const editorRef=useRef(null),gutterRef=useRef(null),chatRef=useRef(null);
+  const[seed]=useState(loadWorkspaceData);
+  const[files,setFiles]=useState(seed.files),[activeFile,setActiveFile]=useState(seed.activeFile||'edge_surface.py'),[prompt,setPrompt]=useState(seed.prompt||''),[messages,setMessages]=useState(seed.currentChat?.messages?.length?seed.currentChat.messages:[welcomeMessage()]);
+  const[currentChatId,setCurrentChatId]=useState(seed.currentChat?.id||chatId()),[currentChatCreatedAt,setCurrentChatCreatedAt]=useState(seed.currentChat?.createdAt||new Date().toISOString()),[savedChats,setSavedChats]=useState(seed.chats||[]);
+  const[artifacts,setArtifacts]=useState(seed.artifacts||[]),[selectedArtifact,setSelectedArtifact]=useState(seed.selectedArtifact||null),[loading,setLoading]=useState(false),[proposal,setProposal]=useState(seed.proposal||null),[webEnabled,setWebEnabled]=useState(Boolean(seed.webEnabled)),[deepMode,setDeepMode]=useState(Boolean(seed.deepMode)),[runtimeMode,setRuntimeMode]=useState(seed.runtimeMode||'fast'),[firstTokenMs,setFirstTokenMs]=useState(null),[centerMode,setCenterMode]=useState(seed.centerMode||'code'),[runState,setRunState]=useState(null),[skillsOpen,setSkillsOpen]=useState(false);
+  const editorRef=useRef(null),gutterRef=useRef(null),chatRef=useRef(null),saveTimerRef=useRef(null);
   const code=files[activeFile]??'',lines=useMemo(()=>String(code).split('\n'),[code]),quickStats=useMemo(()=>calculateTradeStats(personalModel.evalR,false),[]);
-  useEffect(()=>{try{localStorage.setItem('qnt.workspace.files',JSON.stringify(files))}catch{}},[files]);
-  useEffect(()=>{try{localStorage.setItem('qnt.research.artifacts',JSON.stringify(artifacts.slice(0,12)))}catch{}},[artifacts]);
+  const currentChat=useMemo(()=>({id:currentChatId,title:chatTitle(messages),messages,createdAt:currentChatCreatedAt,updatedAt:new Date().toISOString()}),[currentChatId,currentChatCreatedAt,messages]);
+  useEffect(()=>{clearTimeout(saveTimerRef.current);saveTimerRef.current=setTimeout(()=>{try{localStorage.setItem(WORKSPACE_DATA_KEY,JSON.stringify({version:1,files,activeFile,prompt,currentChat,chats:savedChats,artifacts,selectedArtifact,proposal,webEnabled,deepMode,runtimeMode,centerMode,savedAt:new Date().toISOString()}));localStorage.removeItem('qnt.workspace.files');localStorage.removeItem('qnt.research.artifacts')}catch{}},180);return()=>clearTimeout(saveTimerRef.current)},[files,activeFile,prompt,currentChat,savedChats,artifacts,selectedArtifact,proposal,webEnabled,deepMode,runtimeMode,centerMode]);
   useEffect(()=>{chatRef.current?.scrollTo({top:chatRef.current.scrollHeight,behavior:'smooth'})},[messages,loading,runState,proposal]);
   const setCode=v=>setFiles(x=>({...x,[activeFile]:v}));
   const addFile=()=>{let i=1,name=`research_${i}.py`;while(files[name]){i++;name=`research_${i}.py`}setFiles(x=>({...x,[name]:'# New QNT research\n'}));setActiveFile(name);setCenterMode('code')};
+  const hasUserMessages=list=>(list||[]).some(m=>m.role==='user'&&String(m.text||'').trim());
+  const archiveCurrent=cur=>hasUserMessages(messages)?[currentChat,...cur.filter(c=>c.id!==currentChatId)]:cur.filter(c=>c.id!==currentChatId);
+  const startNewChat=()=>{if(loading)return;setSavedChats(archiveCurrent);const id=chatId(),now=new Date().toISOString();setCurrentChatId(id);setCurrentChatCreatedAt(now);setMessages([welcomeMessage('New research thread. Ask me to edit, run, research, explain, or inspect your personal quant stats.')]);setPrompt('');setProposal(null);setRunState(null);setRuntimeMode('fast');setFirstTokenMs(null)};
+  const openSavedChat=id=>{if(loading||id===currentChatId)return;const target=savedChats.find(c=>c.id===id);if(!target)return;setSavedChats(cur=>{const withoutTarget=cur.filter(c=>c.id!==id&&c.id!==currentChatId);return hasUserMessages(messages)?[currentChat,...withoutTarget]:withoutTarget});setCurrentChatId(target.id);setCurrentChatCreatedAt(target.createdAt||new Date().toISOString());setMessages(Array.isArray(target.messages)&&target.messages.length?target.messages:[welcomeMessage()]);setPrompt('');setProposal(null);setRunState(null);setFirstTokenMs(null)};
+  const deleteSavedChat=id=>{if(loading)return;if(!window.confirm('Delete this workspace chat? This cannot be undone.'))return;setSavedChats(cur=>cur.filter(c=>c.id!==id))};
+  const deleteCurrentChat=()=>{if(loading)return;if(!window.confirm('Delete this workspace chat? This cannot be undone.'))return;const id=chatId(),now=new Date().toISOString();setCurrentChatId(id);setCurrentChatCreatedAt(now);setMessages([welcomeMessage('New research thread. Ask me to edit, run, research, explain, or inspect your personal quant stats.')]);setPrompt('');setProposal(null);setRunState(null);setFirstTokenMs(null)};
   const ingestArtifacts=raw=>{const next=raw.map(normalizeArtifact).filter(Boolean);if(!next.length)return[];setArtifacts(cur=>[...next,...cur].slice(0,12));setSelectedArtifact(next[0].id);setCenterMode('output');return next};
   const send=async(override=null,forcePython=false)=>{
     const text=String(override??prompt).trim();if(!text||loading)return;
@@ -75,8 +98,9 @@ export default function ResearchStudio(){
     <aside className="qwsExplorer">
       <div className="qwsExplorerHead"><span>WORKSPACE</span><button onClick={addFile} title="New file"><Plus size={13}/></button></div>
       <div className="qwsTree">{Object.keys(files).map(name=><button key={name} className={activeFile===name&&centerMode==='code'?'active':''} onClick={()=>{setActiveFile(name);setCenterMode('code')}}><FileIcon name={name}/><span>{name}</span>{activeFile===name&&loading?<LoaderCircle className="spin" size={11}/>:null}</button>)}</div>
+      <div className="qwsChatHistory"><div className="qwsChatHistoryHead"><span>CHATS</span><button onClick={startNewChat} disabled={loading} title="New chat"><Plus size={12}/></button></div><div className="qwsChatRow active"><button className="qwsChatOpen" title={chatTitle(messages)}><MessageSquareText size={12}/><span>{chatTitle(messages)}</span><small>open</small></button><button className="qwsChatDelete" onClick={deleteCurrentChat} disabled={loading} title="Delete chat"><Trash2 size={11}/></button></div>{savedChats.map(chat=><div className="qwsChatRow" key={chat.id}><button className="qwsChatOpen" onClick={()=>openSavedChat(chat.id)} disabled={loading} title={chat.title||chatTitle(chat.messages)}><MessageSquareText size={12}/><span>{chat.title||chatTitle(chat.messages)}</span><small>{Math.max(0,(chat.messages?.length||1)-1)} msgs</small></button><button className="qwsChatDelete" onClick={()=>deleteSavedChat(chat.id)} disabled={loading} title="Delete chat"><Trash2 size={11}/></button></div>)}</div>
       <button className={`qwsPersonalStatsLink ${centerMode==='stats'?'active':''}`} onClick={()=>setCenterMode('stats')}><BarChart3 size={13}/><span>personal_stats</span><small>quant</small></button>
-      <div className="qwsExplorerFoot"><span>MODEL CONTEXT</span><div><b>{quickStats?`${quickStats.mean>=0?'+':''}${quickStats.mean.toFixed(2)}R`:'—'}</b><small>sample EV</small></div><div><b>{quickStats?.pf===Infinity?'∞':quickStats?.pf?.toFixed(2)||'—'}</b><small>profit factor</small></div><p>{personalModel.evalPositionIdeas} observations · selective sample</p></div>
+      <div className="qwsExplorerFoot"><span>MODEL CONTEXT</span><div><b>{quickStats?`${quickStats.mean>=0?'+':''}${quickStats.mean.toFixed(2)}R`:'—'}</b><small>sample EV</small></div><div><b>{quickStats?.pf===Infinity?'∞':quickStats?.pf?.toFixed(2)||'—'}</b><small>profit factor</small></div><p>{personalModel.evalPositionIdeas} observations · selective sample</p><p className="qwsDataPoint">1 workspace data point · autosaved</p></div>
     </aside>
 
     <section className="qwsEditorPane">
@@ -87,7 +111,7 @@ export default function ResearchStudio(){
     </section>
 
     <aside className="qwsAgentPane">
-      <div className="qwsAgentHead"><div><b>{title}</b><span>{runtimeMode.toUpperCase()}{firstTokenMs!=null?` · ${firstTokenMs}ms`:''}</span></div><button onClick={()=>setMessages([{role:'assistant',text:'New research thread. Ask me to edit, run, research, explain, or inspect your personal quant stats.',mode:'fast'}])}><Plus size={13}/></button></div>
+      <div className="qwsAgentHead"><div><b>{title}</b><span>{runtimeMode.toUpperCase()}{firstTokenMs!=null?` · ${firstTokenMs}ms`:''} · SAVED</span></div><button onClick={startNewChat} disabled={loading} title="New chat"><Plus size={13}/></button></div>
       <div className="qwsConversation" ref={chatRef}>{messages.map((m,i)=>m.role==='user'?<div className="qwsUserMessage" key={m.streamId||i}>{m.text}</div>:<div className="qwsAssistantMessage" key={m.streamId||i}><RichText text={m.text||''}/></div>)}
         {runState&&<div className="qwsActivityStack">
           {runState.web&&<ActivityRow icon={Globe2} label="Web research" detail="Current external research enabled" state={runState.phase==='routing'?'active':'done'}/>} 
